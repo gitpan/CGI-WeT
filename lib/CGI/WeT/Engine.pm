@@ -1,5 +1,5 @@
 #
-# $Id: Engine.pm,v 1.34 1999/05/15 15:06:31 jsmith Exp $
+# $Id: Engine.pm,v 1.43 1999/08/04 02:30:59 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -12,7 +12,7 @@
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 # FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# The author may be reached at <jsmith@nostrum.com>
+# The author may be reached at <jsmith@jamesmith.com>
 #
 
 package CGI::WeT::Engine;
@@ -21,13 +21,13 @@ use strict;
 use Carp;
 use vars qw($VERSION @ISA);
 use integer;
-use Apache::Constants;
+#use Apache::Constants;
 use IO::File ();
-# use CGI qw/:standard/;
+use CGI ':cgi-lib';
 
-# @ISA = (qw(CGI));
+@ISA = (qw(CGI));
 
-( $VERSION ) = '$Revision: 1.34 $ ' =~ /\$Revision:\s+([^\s]+)/;
+( $VERSION ) = '$Revision: 1.43 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -123,6 +123,26 @@ All required modules must be loaded in at server startup.  No code is loaded
 during rendering.  The minimum modules are CGI::WeT::Engine, CGI::WeT::Theme,
 and CGI::WeT::Modules::Basic.
 
+=head1 USING TIED HANDLES
+
+CGI::WeT::Engine now supports tied handles.  This makes themeing of older
+code much easier:
+
+    use CGI::WeT;
+    tie *STDOUT, 'CGI::WeT::Engine';
+
+    print "Title: <title of page>\nAuthor: A. U. Thor\n\n";
+
+    .
+    .  Old script here printing to STDOUT
+    .
+
+    untie *STDOUT;
+
+The resulting page will have the scripts output as the body.  When using this
+method, do not use the CGI::start_html function -- this is taken care of by
+the CGI::WeT::Engine code.
+
 =head1 CGI::WeT::Engine API
 
 =over 4
@@ -138,102 +158,160 @@ STDOUT.
 
 =cut
 
-sub new {
-    my $this = shift;
-    my $class = ref($this) || $this;
-    my ($args, $in, @in, %in, $key, $val, $i, %cookiein, $k);
-    my $r = undef;
+sub _new {
+  my $this = shift;
+  my $class = ref($this) || $this;
+  my ($args,$in, %in, $key, $val, $i, %cookiein, $k);
+  my $r = undef;
 
-    my $self = {};
+  my $self = { };
 
-    bless $self, $class;
+  bless $self, $class;
 
-    $$self{MOD_PERL} = ($ENV{MOD_PERL} =~ /mod_perl\/([.0-9]+)/)[0] || 0;
+  $self->{'MOD_PERL'} = ($ENV{MOD_PERL} =~ /mod_perl\/([.0-9]+)/)[0] || 0;
 
-    $$self{CONTENT} = [ ];
+  $self->{'CONTENT'} = [ ];
 
-    if($self->{'MOD_PERL'}) {
-	$r = Apache->request;
+  if($ENV{'HTTP_COOKIE'}) {
+    foreach $i (split(/[&;]/,$ENV{'HTTP_COOKIE'})) {
+      $i =~ s/\+/ /g;
 
-#
-# take care of Apache::Filter detection here...
-#
-	if(defined &Apache::filter_input) {
-	    no strict 'subs';
-	    $self->{'FILTERED'} = $Apache::Filter::VERSION || 1;
-	    $self->{'STDOUT'} = \STDOUT;
-	} else {
-	    $self->{'FILTERED'} = 0;
-	    $self->{'STDOUT'} = $r;
-	}
+      ($key, $val) = split(/=/,$i,2);
 
-	if($r->method eq 'GET') {
-	    $in = $r->args;
-	} elsif($r->method eq 'POST') {
-	    $r->read($in, $ENV{CONTENT_LENGTH});
-	} else {
-	    $in = '';
-	}
+      $key =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
+      $val =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
+      $val =~ s/\r+//g;
+      if(defined $in{$key}) {
+        my $collect = $in{$key};
+        if(ref $collect) {
+          push(@{$collect}, $val);
+        } else {
+          $in{$key} = [$collect, $val];
+        }
+      } else {
+        $in{$key} = $val;
+      }
+    }
+    foreach $k (keys %in) {
+      $in{$k} ||= $in{$k};
+    }
+  }
+ 
+  $self->arguments_push(\%in);
+
+  if($self->{'MOD_PERL'}) {
+    # get config from httpd.conf
+    $r = Apache->request;
+    $self->{'SITENAME'} = $r->dir_config('WeT_SiteName');
+    $self->{'URLBASES'}->{'URLBASE'} =
+      $r->dir_config('WeT_SiteRoot') || '/';
+    $self->{'URLBASES'}->{'TOP'} =
+      $r->dir_config('WeT_Top') || '/';
+    $self->{'DOCUMENTROOT'} = $r->dir_config('WeT_DocumentRoot') ||
+      $ENV{'DOCUMENT_ROOT'};
+    $self->{'EMAIL'} = $r->dir_config('WeT_Email') || $ENV{'SERVER_ADMIN'};
+    $self->{'PROBLEMS_EMAIL'} =
+      $r->dir_config('WeT_ProblemsEmail') || $self->{'EMAIL'};
+    $self->{'DEFAULT_THEME'} = $ENV{'WET_THEME'} ||
+      $r->dir_config('WeT_DefaultTheme') ||
+        'plain';
+    $self->{'SSL_URLS'} = $r->dir_config('WeT_UseSSLURLs');
+    $self->{'AC'} = $r->dir_config('WeT_AnonymousCoward');
+    foreach (map((m/(.*)::$/),
+                 grep(!/^[A-Z_]*$/ && /^[A-Z]/,
+                      keys %CGI::WeT::Modules::))) {
+      no strict;
+      if(defined & { "CGI::WeT::Modules::$_\::initialize" }) {
+        & { "CGI::WeT::Modules::$_\::initialize" } ($self, $r);
+      }
+    }
+  } else {
+    # get config from subroutine
+    no strict;
+    if(defined &CGI::WeT::site_config) {
+      &CGI::WeT::site_config($self);
     } else {
-	if($ENV{REQUEST_METHOD} eq 'GET') {
-	    $in = $ENV{QUERY_STRING};
-	} elsif($ENV{REQUEST_METHOD} eq 'POST') {
-	    read(STDIN, $in, $ENV{CONTENT_LENGTH});
-	} else {
-	    $in = '';
-	}
+      $self->{'URLBASES'}->{'URLBASE'} = '/';
+      $self->{'URLBASES'}->{'TOP'} = '/';
+      $self->{'DOCUMENTROOT'} = $ENV{'DOCUMENT_ROOT'};
+      $self->{'EMAIL'} = $ENV{'SERVER_ADMIN'};
+      $self->{'PROBLEMS_EMAIL'} = $self->{'EMAIL'};
+      $self->{'DEFAULT_THEME'} = $ENV{'WET_THEME'} || 'plain';
+      $self->{'AC'} = 'Anonymous Coward';
     }
-    @in = split(/[&;]/,$in);
-    foreach $i (0 .. $#in) {
-	$in[$i] =~ s/\+/ /g;
-	
-        ($key, $val) = split(/=/,$in[$i],2);
-#
-# idiom for multiple entries is taken from Apachi::ASP
-#
-	
-	$key =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
-	$val =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
-	$val =~ s/\r+//g;
-	if(defined $in{$key}) {
-	    my $collect = $in{$key};
-	    if(ref $collect) {
-		push(@{$collect}, $val);
-	    } else {
-		$in{$key} = [$collect, $val];
-	    }
-	} else {
-	    $in{$key} = $val;
-	}
+  }
+ 
+  if   ($ENV{'MOD_PERL'} && $r->uri =~ /^([^\?]*)/) { $self->{'URI'} = $1;  }
+  elsif($ENV{'REQUEST_URI'} =~ /^([^\?]*)/)         { $self->{'URI'} = $1;  }
+  else                                              { $self->{'URI'} = '/'; }
+
+  if($self->{'MOD_PERL'}) {
+    #$r = Apache->request;
+
+    #
+    # take care of Apache::Filter detection here...
+    #
+    if(defined &Apache::filter_input) {
+      no strict 'subs';
+      $self->{'FILTERED'} = $Apache::Filter::VERSION || 1;
+      $self->{'STDOUT'} = \*STDOUT;
+    } else {
+      $self->{'FILTERED'} = 0;
+      $self->{'STDOUT'} = $r;
     }
-    if($ENV{HTTP_COOKIE}) {
-	$in = $ENV{HTTP_COOKIE};
-	@in = split(/[&;]/,$in);
-	foreach $i (0 .. $#in) {
-	    $in[$i] =~ s/\+/ /g;
-	    
-	    ($key, $val) = split(/=/,$in[$i],2);
-	    
-	    $key =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
-	    $val =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
-	    $val =~ s/\r+//g;
-	    if(defined $cookiein{$key}) {
-		my $collect = $cookiein{$key};
-		if(ref $collect) {
-		    push(@{$collect}, $val);
-		} else {
-		    $cookiein{$key} = [$collect, $val];
-		}
-	    } else {
-		$cookiein{$key} = $val;
-	    }
-	}
-	foreach $k (keys %cookiein) {
-	    $in{$k} ||= $cookiein{$k};
-	}
-    }
+  }
+ 
+  $self->{'doing_headers'} = 0;
+
+  return $self;
+}
+
+sub new {
+  my $this = shift;
+  my ($args,$in, %in, $key, $val, $i, %cookiein, $k);
+  my $r = undef;
+  
+  my $self = _new($this, @_);
+  
+  if($self->{'MOD_PERL'}) {
+    $r = Apache->request;
     
-    $self->arguments_push(\%in);
+    if   ($r->method eq 'GET' ) { $in = $r->args;                      }
+    elsif($r->method eq 'POST') { $r->read($in, $ENV{CONTENT_LENGTH}); }
+    else                        { $in = '';                            }
+  } else {
+    if($ENV{REQUEST_METHOD} eq 'GET')     
+      { $in = $ENV{QUERY_STRING}; }
+    elsif($ENV{REQUEST_METHOD} eq 'POST') 
+      { read(STDIN, $in, $ENV{CONTENT_LENGTH}); }
+    else 
+      { $in = ''; }
+  }
+
+  foreach $i (split(/[&;]/,$in)) {
+    $i =~ s/\+/ /g;
+    
+    ($key, $val) = split(/=/,$i,2);
+    #
+    # idiom for multiple entries is taken from Apachi::ASP
+    #
+    
+    $key =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
+    $val =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
+    $val =~ s/\r+//g;
+    if(defined $in{$key}) {
+      my $collect = $in{$key};
+      if(ref $collect) {
+	push(@{$collect}, $val);
+      } else {
+	$in{$key} = [$collect, $val];
+      }
+    } else {
+      $in{$key} = $val;
+    }
+  }
+
+  $self->arguments_push(\%in);
 
 =pod
 
@@ -274,76 +352,32 @@ to be defined:
 # ' for Emacs
 # ` for Emacs
 
-    if($self->{'MOD_PERL'}) {
-        # get config from httpd.conf
-	$self->{'SITENAME'} = $r->dir_config('WeT_SiteName');
-	$self->{'URLBASES'}->{'URLBASE'} = 
-	    $r->dir_config('WeT_SiteRoot') || '/';
-	$self->{'URLBASES'}->{'TOP'} =
-	    $r->dir_config('WeT_Top') || '/';
-        $self->{'DOCUMENTROOT'} = $r->dir_config('WeT_DocumentRoot') ||
-            $ENV{'DOCUMENT_ROOT'};
-	$self->{'EMAIL'} = $r->dir_config('WeT_Email') || $ENV{'SERVER_ADMIN'};
-	$self->{'PROBLEMS_EMAIL'} = 
-	    $r->dir_config('WeT_ProblemsEmail') || $self->{'EMAIL'};
-	$self->{'DEFAULT_THEME'} = $ENV{'WET_THEME'} || 
-	    $r->dir_config('WeT_DefaultTheme') ||
-		'plain';
-        $self->{'SSL_URLS'} = $r->dir_config('WeT_UseSSLURLs');
-        $self->{'AC'} = $r->dir_config('WeT_AnonymousCoward');
-        foreach (map((m/(.*)::$/),
-                 grep(!/^[A-Z_]*$/ && /^[A-Z]/, keys %CGI::WeT::Modules::))) {
-            no strict;
-            if(defined & { "CGI::WeT::Modules::$_\::initialize" }) {
-                & { "CGI::WeT::Modules::$_\::initialize" } ($self, $r);
-            }
-        }
-    } else {
-	# get config from subroutine
-	no strict;
-        if(defined CGI::WeT::site_config) {
-    	    &CGI::WeT::site_config($self);
-        } else {
-            $self->{'URLBASES'}->{'URLBASE'} = '/';
-            $self->{'URLBASES'}->{'TOP'} = '/';
-            $self->{'DOCUMENTROOT'} = $ENV{'DOCUMENT_ROOT'};
-            $self->{'EMAIL'} = $ENV{'SERVER_ADMIN'};
-            $self->{'PROBLEMS_EMAIL'} = $self->{'EMAIL'};
-            $self->{'DEFAULT_THEME'} = $ENV{'WET_THEME'} || 'plain';
-            $self->{'AC'} = 'Anonymous Coward';
-        }
-    }
-
-    if($ENV{MOD_PERL} && $r->uri =~ /^([^\?]*)/) { 
-	$self->{'URI'} = $1;
-    } elsif($ENV{'REQUEST_URI'} =~ /^([^\?]*)/) {
-	$self->{'URI'} = $1;
-    } else {
-	$self->{'URI'} = '/';
-    }
-
-    return $self;
+  return $self;
 }
 
 sub DESTROY {
-    my $engine = shift;
-    my $r;
+  my $engine = shift;
+  my $r;
 
-    return if $engine->{'INTERNAL_USE_ONLY'};
+  return if $engine->{'INTERNAL_USE_ONLY'};
 
-    if($engine->{'MOD_PERL'} ) {
-	$r = Apache->request;
-	my $fh = $engine->{'STDOUT'};
-
-	$r->content_type('text/html');
-
-	$r->send_http_header unless $engine->{'FILTERED'};
-
-	$fh->print($engine->render_page);
-    } else {
-	print "Content-type: text/html\n\n";
-	print $engine->render_page;
-    }
+  if($engine->{'doing_headers'}) {
+    $engine->print("\n\n");
+  }
+     
+  if($engine->{'MOD_PERL'} ) {
+    $r = Apache->request;
+    my $fh = $engine->{'STDOUT'};
+    
+    $r->content_type('text/html');
+    
+    $r->send_http_header unless $engine->{'FILTERED'};
+    
+    $fh->print($engine->render_page);
+  } else {
+    print "Content-type: text/html\n\n";
+    print $engine->render_page;
+  }
 }
 
 =pod
@@ -361,16 +395,11 @@ of outputing HTML.  Calling this function will disable automatic HTML output.
 =cut
 
 sub internal_use_only {
-    my $engine = shift;
-    my $v = $engine->{'INTERNAL_USE_ONLY'};
-
-    if(scalar(@_)) {
-	$engine->{'INTERNAL_USE_ONLY'} = shift;
-    } else {
-	$engine->{'INTERNAL_USE_ONLY'} = 1;
-    }
-
-    return $v;
+  my $engine = shift;
+  my $v = $engine->{'INTERNAL_USE_ONLY'};
+ 
+  $engine->{'INTERNAL_USE_ONLY'} = scalar(@_) ? shift : 1;
+  return $v;
 }
 
 =pod
@@ -385,16 +414,15 @@ to pop.
 =cut
 
 sub content_pop {
-    my $self = shift;
-    my $num = shift || 1;
-
-    $num = 
-	($num > scalar(@{ $$self{'CONTENT'} })) ? 
-	    scalar(@{ $$self{'CONTENT'} }) : 
-		$num;
-
-
-    return splice(@{ $$self{'CONTENT'} }, -$num);
+  my $self = shift;
+  my $num = shift || 1;
+  
+  $num = 
+    ($num > scalar(@{ $self->{'CONTENT'} })) ? 
+      scalar(@{ $self->{'CONTENT'} }) : 
+	$num;
+  
+  return splice(@{ $self->{'CONTENT'} }, -$num);
 }
 
 =pod
@@ -408,9 +436,9 @@ extensions to the engine.
 =cut
 
 sub content_push {
-    my $self = shift;
+  my $self = shift;
 
-    push @{ $$self{CONTENT} }, @_;
+  push @{ $self->{'CONTENT'} }, @_;
 }
 
 =pod
@@ -426,7 +454,7 @@ extensions to the engine.
 sub content_peek {
     my $self = shift;
 
-    return ${ $$self{CONTENT} }[-1];
+    return $self->{'CONTENT'}->[-1];
 }
 
 =pod
@@ -442,7 +470,7 @@ extensions to the engine.  Caveat coder.
 sub arguments_pop {
     my $self = shift;
 
-    return pop @{ $$self{ARGUMENTS} };
+    return pop @{ $self->{'ARGUMENTS'} };
 }
 
 =pod
@@ -457,9 +485,9 @@ extensions to the engine.  Caveat coder.
 =cut
 
 sub arguments_push {
-    my $self = shift;
+  my $self = shift;
 
-    push @{ $$self{ARGUMENTS} }, @_;
+  push @{ $self->{'ARGUMENTS'} }, @_;
 }
 
 =pod
@@ -479,33 +507,32 @@ GET, or POST data.
 =cut
 
 sub argument {
-    my $self = shift;
-    my $arg = shift;
-    my ($i, $n);
-
-    if(defined $$self{ARGUMENTS}) {
-        $i = scalar(@{ $$self{ARGUMENTS} });
-        $n = $i-1;  # points to the top of the stack where we cache the value
-        while($i) {
-            $i--;
-            if(exists $$self{ARGUMENTS}->[$i]->{$arg}) {
-                $$self{ARGUMENTS}->[$n]->{$arg} ||=
-                    $$self{ARGUMENTS}->[$i]->{$arg};
-		if(ref $$self{ARGUMENTS}->[$i]->{$arg}) {
-		    return(wantarray 
-			   ? @ { $$self{ARGUMENTS}->[$i]->{$arg} }
-			   : join(" ", @ { $$self{ARGUMENTS}->[$i]->{$arg} })
-			   );
-		} else {
-		    return(wantarray
-			   ? ( $$self{ARGUMENTS}->[$i]->{$arg} )
-			   : $$self{ARGUMENTS}->[$i]->{$arg}
-			   );
-		}
-            }
-        }
+  my $self = shift;
+  my $arg = shift;
+  my ($i, $n);
+  
+  if(defined $self->{'ARGUMENTS'}) {
+    $i = scalar(@{ $self->{'ARGUMENTS'} });
+    while($i) {
+      $i--;
+      if(exists $self->{'ARGUMENTS'}->[$i]->{$arg}) {
+	$self->{'ARGUMENTS'}->[-1]->{$arg} ||=
+	  $self->{'ARGUMENTS'}->[$i]->{$arg};
+	if(ref $self->{'ARGUMENTS'}->[-1]->{$arg}) {
+	  return(wantarray 
+		 ? @ { $self->{'ARGUMENTS'}->[-1]->{$arg} }
+		 : join(" ", @ { $self->{'ARGUMENTS'}->[-1]->{$arg} })
+		);
+	} else {
+	  return(wantarray
+		 ? ( $self->{'ARGUMENTS'}->[-1]->{$arg} )
+		 : $self->{'ARGUMENTS'}->[-1]->{$arg}
+		);
+	}
+      }
     }
-    return undef;
+  }
+  return undef;
 }
 
 =pod
@@ -530,26 +557,26 @@ tags in the header.  Useful information for search engines.
 # ` for Emacs
 
 sub headers_push {
-    my $self = shift;
-    my $k;
-    my $v;
+  my $self = shift;
+  my $k;
+  my $v;
 
-    $$self{HEADERS} ||= { };
+  $self->{'HEADERS'} ||= { };
 
-    while (scalar(@_)) {
-        $k = shift;
-	$v = shift;
-	if(defined $$self{HEADERS}->{$k}) {
-	    my $collect = $$self{HEADERS}->{$k};
-	    if(ref $collect) {
-		push(@ { $collect }, $v);
-	    } else {
-		$$self{HEADERS}->{$k} = [$collect, $v];
-	    }
-	} else {
-	    $$self{HEADERS} -> {$k} = $v;
-	}
+  while (scalar(@_)) {
+    $k = shift;
+    $v = shift;
+    if(defined $self->{'HEADERS'}->{$k}) {
+      my $collect = $self->{'HEADERS'}->{$k};
+      if(ref $collect) {
+	push(@ { $collect }, $v);
+      } else {
+	$self->{'HEADERS'}->{$k} = [$collect, $v];
+      }
+    } else {
+      $self->{'HEADERS'} -> {$k} = $v;
     }
+  }
 }
 
 =pod
@@ -564,23 +591,23 @@ B<headers_push>.
 =cut
 
 sub header {
-    my $self = shift;
-    my $arg = shift;
-
-    if(exists $$self{HEADERS}->{$arg}) {
-	if(ref $$self{HEADERS}->{$arg}) {
-	    return(wantarray 
-		   ? @ { $$self{HEADERS}->{$arg} }
-		   : join(" ", @ { $$self{HEADERS}->{$arg} })
-		   );
-	} else {
-	    return(wantarray
-		   ? ( $$self{HEADERS}->{$arg} )
-		   : $$self{HEADERS}->{$arg}
-		   );
-	}
+  my $self = shift;
+  my $arg = shift;
+  
+  if(exists $self->{'HEADERS'}->{$arg}) {
+    if(ref $self->{'HEADERS'}->{$arg}) {
+      return(wantarray 
+	     ? @ { $self->{'HEADERS'}->{$arg} }
+	     : join(" ", @ { $self->{'HEADERS'}->{$arg} })
+	    );
+    } else {
+      return(wantarray
+	     ? ( $self->{'HEADERS'}->{$arg} )
+	     : $self->{'HEADERS'}->{$arg}
+	    );
     }
-    return undef;
+  }
+  return undef;
 }
 
 =pod
@@ -594,9 +621,28 @@ removed by a provided method.
 =cut
 
 sub print {
+  my $self = shift;
+ 
+    if($self->{'doing_headers'}) {
+        $self->{'buffer'} .= join($,, @_);
+        if($self->{'buffer'} =~ /\n\s*\n/s) { 
+            my($headers, $body) = split(/\n\s*\n/, $self->{'buffer'},2);
+            foreach my $l (split(/\n/, $headers)) {
+                $self->headers_push(split(/\s*:\s*/, $l, 2));
+            }
+            push @{ $self->{'BODY'} }, $body;
+            delete $self->{'buffer'};
+            $self->{'doing_headers'} = 0;
+        }
+    } else { 
+        push @{ $self->{'BODY'} }, @_;
+    }
+}       
+
+sub PRINT {
     my $self = shift;
 
-    push @{ $$self{BODY} }, @_;
+    $self->print(@_);
 }
 
 =pod
@@ -614,45 +660,58 @@ If the url built from B<array> begins with `/', then the link is absolute with
 respect to the top of the site.  Otherwise, it is relative to the page being
 produced.
 
+If this function is called without arguments, it will return the URI of the
+current request.
+
 =cut
 # ' for Emacs
 # ` for Emacs
 
 
 sub url {
-    my $self = shift;
-    my $url = join("", @_);
+  my $self = shift;
 
-    my(@subs) = ($url =~ m/\@\@(.*?)\@\@/g);
-
-    foreach (@subs) {
-	if(defined $self->{'THEME'}->{'URLBASES'}->{$_}) {
-	    $url =~ s{\@\@$_\@\@}{$self->{'THEME'}->{'URLBASES'}->{$_}}g;
-	} else {
-	    $url =~ s{\@\@$_\@\@}{$self->{'URLBASES'}->{$_}}g;
-	}
+  unless(@_) {
+    if($self->{'MOD_PERL'}) {
+      my $r = Apache->request;
+      return $r->uri();
+    } else {
+      return $ENV{'SCRIPT_URL'};
     }
-
-    if($url =~ /^\//) {
-	$url = $self->{'URLBASES'}->{'URLBASE'} . "/$url";
+  }
+  
+  my $url = join("", @_);
+  
+  my(@subs) = ($url =~ m/\@\@(.*?)\@\@/g);
+  
+  foreach (@subs) {
+    if(defined $self->{'THEME'}->{'URLBASES'}->{$_}) {
+      $url =~ s{\@\@$_\@\@}{$self->{'THEME'}->{'URLBASES'}->{$_}}g;
+    } else {
+      $url =~ s{\@\@$_\@\@}{$self->{'URLBASES'}->{$_}}g;
     }
-
-    1 while($url =~ s!//!/!g);
-
-    if($self->{'SSL_URLS'}) {
-	$url =~ s/:(NO)SSL//g;
-	if($ENV{'SSL_PROTOCOL'}) {
-	    if($url !~ /\.private\./ && $url !~ /\.form\./) {
-		$url .= ":NOSSL";
-	    }
-	} else {
-	    if($url =~ /\.private\./ || $url =~ /\.form\./) {
-		$url .= ":SSL";
-	    }
-	}
+  }
+  
+  if($url =~ /^\//) {
+    $url = $self->{'URLBASES'}->{'URLBASE'} . "/$url";
+  }
+  
+  1 while($url =~ s!//!/!g);
+  
+  if($self->{'SSL_URLS'}) {
+    $url =~ s/:(NO)SSL//g;
+    if($ENV{'SSL_PROTOCOL'}) {
+      if($url !~ /\.private\./ && $url !~ /\.form\./) {
+	$url .= ":NOSSL";
+      }
+    } else {
+      if($url =~ /\.private\./ || $url =~ /\.form\./) {
+	$url .= ":SSL";
+      }
     }
-
-    return $url;
+  }
+  
+  return $url;
 }
 
 =pod
@@ -661,28 +720,41 @@ sub url {
 
 This function will return the location of B<URL> in the filesystem.  This
 will use Apache's URl->filename translation code if running under mod_perl.
-Otherwise, tacks the document root on the beginning.
+Otherwise, tacks the document root on the beginning.  If no arguments are
+passed, it will return the filename of the current page.
 
 =cut
 # ` for Emacs
 # ' for Emacs
 
 sub filename {
-    my $engine = shift;
-    my $url = join("", @_);
-
+  my $engine = shift;
+  my $url;
+  if(@_) {
+    $url = join("", @_);
     $url =~ s/;//g;
     $url =~ s/:(NO)SSL$// if($engine->{'SSL_URLS'});
-
-    if($engine->{'MOD_PERL'}) {
-	my $r = Apache->request;
-	my $subr = $r->lookup_uri($url);
-	return $subr->filename;
+  } else {
+    $url = undef;
+  }
+  
+  if($engine->{'MOD_PERL'}) {
+    my $r = Apache->request;
+    if(defined $url) {
+      my $subr = $r->lookup_uri($url);
+      return $subr->filename;
     } else {
-	my $filename = $engine->{'DOCUMENTROOT'} . "/" . $url;
-	$filename =~ s,//,/,g;
-	return $filename;
+      return $r->filename();
     }
+  } else {
+    if(defined $url) {
+      my $filename = $engine->{'DOCUMENTROOT'} . "/" . $url;
+      $filename =~ s,//,/,g;
+      return $filename;
+    } else {
+      return $ENV{'SCRIPT_FILENAME'};
+    }
+  }
 }
 
 =pod
@@ -706,67 +778,63 @@ the input text.  Text may be _underlined_ or made *bold*.
 # following is based on _The Perl Cookbook_
 
 sub _smarttext_render_p {
-    my($p) = shift;
-	
-    $p =~ s/%/%25/gs;
-    $p =~ s/&(.*?);/%%$1%%/gs;
-    $p =~ s/&/&amp;/gs;
-    $p =~ s/</&lt;/gs;
-    $p =~ s/>/&gt;/gs;
-    $p =~ s/%%(.*?)%%/&$1;/gs;
-    $p =~ s/%25/%/gs;
-    
-    $p =~ tr/\n/ /;
-    $p =~ s{^(&gt;.*)}  {$1<br>}gms;        # quoted text
-    $p =~   s{&lt;URL:\s*(.*?)&gt;}   {<a href="$1">$1</a>}gsi 
-	||   # these are for URLs
-	    s{((http|ftp|https):\S+)} {<a href="$1">$1</a>}gs; 
-    $p =~ s{\*(.*?)\*} {<strong>$1</strong>}gs;
-    $p =~ s{\b_(.*?)\_\b} {<i>$1</i>}gs;
-    $p =~ s{&star;}            {*}gsi;
-    $p =~ s{&under;}           {_}gsi;
-    $p = "<p>$p</p>";
-    
-    return $p;
+  my($p) = shift;
+  
+  $p =~ s/%/%25/gs;
+  $p =~ s/&(.*?);/%%$1%%/gs;
+  $p =~ s/&/&amp;/gs;
+  $p =~ s/</&lt;/gs;
+  $p =~ s/>/&gt;/gs;
+  $p =~ s/%%(.*?)%%/&$1;/gs;
+  $p =~ s/%25/%/gs;
+  
+  $p =~ tr/\n/ /;
+  $p =~ s{^(&gt;.*)}  {$1<br>}gms;        # quoted text
+  $p =~   s{&lt;URL:\s*(.*?)&gt;}   {<a href="$1">$1</a>}gsi 
+    ||   # these are for URLs
+      s{((http|ftp|https):\S+)} {<a href="$1">$1</a>}gs; 
+  $p =~ s{\*(.*?)\*} {<strong>$1</strong>}gs;
+  $p =~ s{\b_(.*?)\_\b} {<i>$1</i>}gs;
+  $p =~ s{&star;}            {*}gsi;
+  $p =~ s{&under;}           {_}gsi;
+  $p = "<p>$p</p>";
+  
+  return $p;
 }
 
 sub smarttext {
-    my $engine = shift;
-    chomp(@_);
-    my $text = join(" \n", @_);
-    my (@text) = split(/\n/, $text);
-
-    my $paragraph;
-    my $output;
-    my $line;
-    my $p;
-
-    while(@text) {
-	$line = shift @text;
-	$line =~ s/\r//gs;
-	if($line =~ /^\s*$/ && $p) {
-	    $output .= &_smarttext_render_p($p);
-	    $p = '';
-	} elsif($line =~ /^\s/) {
-	    $line =~ s{(.*)$ } {<pre>\n$1</pre>\n}sx;
-	    if($p) {
-		$output .= &_smarttext_render_p($p);
-		$p = '';
-	    }
-	    $output .= $line; 
-	} else {
-	    $p .= "$line";
-	}	
-    }
-
-    # do last paragraph...
-    $output .= &_smarttext_render_p($p);
-
-    if(wantarray) {
-	return split(/\n/, $output);
+  my $engine = shift;
+  chomp(@_);
+  my $text = join(" \n", @_);
+  my (@text) = split(/\n/, $text);
+  
+  my $paragraph;
+  my $output;
+  my $line;
+  my $p;
+  
+  while(@text) {
+    $line = shift @text;
+    $line =~ s/\r//gs;
+    if($line =~ /^\s*$/ && $p) {
+      $output .= &_smarttext_render_p($p);
+      $p = '';
+    } elsif($line =~ /^\s/) {
+      $line =~ s{(.*)$ } {<pre>\n$1</pre>\n}sx;
+      if($p) {
+	$output .= &_smarttext_render_p($p);
+	$p = '';
+      }
+      $output .= $line; 
     } else {
-	return $output;
-    }
+      $p .= "$line";
+    }	
+  }
+  
+  # do last paragraph...
+  $output .= &_smarttext_render_p($p);
+  
+  return wantarray ? split(/\n/, $output) : $output;
 }
 
 =pod
@@ -780,73 +848,73 @@ B<CGI::WeT::Modules> extensions to the engine.  Caveat coder.
 =cut
 
 sub render_content {
-    my $self = shift;
+  my $self = shift;
 
-    use integer;
-
-    my $layout = $self->content_pop;
-    my(@output);
-    my($position) = (0);
-    my($args, $key, $val, $object);
-
-    return () if !defined $layout;
-
-    while($position < scalar(@$layout)) {
-	if(ref($layout->[$position])) {
-            $self->content_push($layout->[$position]);
-        } else {
-            if($layout->[$position] =~ /^\[([A-Z_]+)\s*(.*)\]$/) {
-                $object = $1;
-                $args = { };
-                foreach (split(/\s+/, $2)) {
-                    ($key, $val) = split(/=/, $_, 2);
-                    $val =~ s/%(..)/pack("c", hex($1))/ge;
-		    if(defined $$args{$key}) {
-			my $collect = $$args{$key};
-			if(ref $collect) {
-			    push(@ { $collect}, $val);
-			} else {
-			    $$args{$key} = [$collect, $val];
-			}
-		    } else {
-			$$args{$key} = $val;
-		    }
-                }
-                $self->arguments_push($args);
-		no strict;
-                if(defined $self->{'THEME'}->page_type($object)) {
-		    my $pt = $self->{'THEME'}->page_type($object);
-		    $self->content_push($pt->LAYOUT || [ '' ]);
-                    push(@output, $self->render_content);
-		    if($pt->SCRIPTS) {
-			my $s;
-			foreach $s (keys % { $pt->SCRIPTS }) {
-			    if($self->argument("\L$s") ne 'no') {
-				$self->{'SCRIPTS'}->{$s}->{$object} =
-				    $pt->SCRIPTS->{$s};
-			    }
-			}
-		    }
-                } elsif(defined & { "CGI::WeT::Modules::$object" }) {
-                    push(@output, & { "CGI::WeT::Modules::$object" }($self));
-		    if(defined & { "CGI::WeT::Scripts::$object" }) {
-			my $sk = & { "CGI::WeT::Scripts::$object" }($self);
-			foreach $s (keys %$sk) {
-			    if($self->argument("\L$s") ne 'no') {
-				$self->{'SCRIPTS'}->{$s}->{$object} =
-				    $sk->{$s};
-			    }
-			}
-		    }
-                }
-		$self->arguments_pop;
-            } else {
-                push(@output, $layout->[$position]);
-            }
-        }
-	$position++;
+  use integer;
+  
+  my $layout = $self->content_pop;
+  my(@output);
+  my($position) = (0);
+  my($args, $key, $val, $object);
+  
+  return () if !defined $layout;
+  
+  while($position < scalar(@$layout)) {
+    if(ref($layout->[$position])) {
+      $self->content_push($layout->[$position]);
+    } else {
+      if($layout->[$position] =~ /^\[([A-Z_]+)\s*(.*)\]$/) {
+	$object = $1;
+	$args = { };
+	foreach (split(/\s+/, $2)) {
+	  ($key, $val) = split(/=/, $_, 2);
+	  $val =~ s/%(..)/pack("c", hex($1))/ge;
+	  if(defined $$args{$key}) {
+	    my $collect = $$args{$key};
+	    if(ref $collect) {
+	      push(@ { $collect}, $val);
+	    } else {
+	      $$args{$key} = [$collect, $val];
+	    }
+	  } else {
+	    $$args{$key} = $val;
+	  }
+	}
+	$self->arguments_push($args);
+	no strict;
+	if(defined $self->{'THEME'}->page_type($object)) {
+	  my $pt = $self->{'THEME'}->page_type($object);
+	  $self->content_push($pt->LAYOUT || [ '' ]);
+	  push(@output, $self->render_content);
+	  if($pt->SCRIPTS) {
+	    my $s;
+	    foreach $s (keys % { $pt->SCRIPTS }) {
+	      if($self->argument("\L$s") ne 'no') {
+		$self->{'SCRIPTS'}->{$s}->{$object} =
+		  $pt->SCRIPTS->{$s};
+	      }
+	    }
+	  }
+	} elsif(defined & { "CGI::WeT::Modules::$object" }) {
+	  push(@output, & { "CGI::WeT::Modules::$object" }($self));
+	  if(defined & { "CGI::WeT::Scripts::$object" }) {
+	    my $sk = & { "CGI::WeT::Scripts::$object" }($self);
+	    foreach $s (keys %$sk) {
+	      if($self->argument("\L$s") ne 'no') {
+		$self->{'SCRIPTS'}->{$s}->{$object} =
+		  $sk->{$s};
+	      }
+	    }
+	  }
+	}
+	$self->arguments_pop;
+      } else {
+	push(@output, $layout->[$position]);
+      }
     }
-    return @output;
+    $position++;
+  }
+  return @output;
 }
 
 =pod
@@ -861,116 +929,116 @@ by B<new CGI::WeT::Theme> or a derived class of B<CGI::WeT::Theme>.
 =cut
 
 sub render_page {
-    my $self = shift;
-    $self->{'THEME'} = shift;   # will be undef if no theme specified...
-    my(@output, @head);
-    my($theme, $layout, $css);
+  my $self = shift;
+  $self->{'THEME'} = shift;   # will be undef if no theme specified...
+  my(@output, @head);
+  my($theme, $layout, $css);
 
-    my $version = $CGI::WeT::VERSION || $CGI::WeT::Engine::VERSION;
-
-    push(@head,
-         map("<meta name=\"$_\" content=\"" . scalar($self->header($_)) 
-	     . "\">\n",
-             grep(defined $$self{HEADERS}->{$_},
-                  'Author', 'Keywords', 'Date'
-                  )
-             )
-         );
-    push(@head, "<meta name=\"Generator\" content=\"CGI::WeT $version\">\n");
-    push(@head, "<meta name=\"Theme\" content=\"", 
-	 $self->argument('theme'),
-	 "\">\n");
-
-    push(@head, "<title>", "$$self{SITENAME} - ", 
-	 scalar($self->header('Title')),
-         "</title>\n");
-
-    $self->{'THEME'} ||= new CGI::WeT::Theme($self->argument('theme'))
-	|| new CGI::WeT::Theme($self->{'DEFAULT_THEME'});
-
-    $layout = $self->{'THEME'}->page_type(($self->header('Type')), 'DEFAULT');
-
-    if($layout->has_css) {
-	push(@head, "<style type=\"text/css\">", "<!-- ");
-	push(@head, @ { $layout->CSS });
-	push(@head, " -->","</style>");
+  my $version = $CGI::WeT::VERSION || $CGI::WeT::Engine::VERSION;
+  
+  push(@head,
+       map("<meta name=\"$_\" content=\"" . scalar($self->header($_)) 
+	   . "\">\n",
+	   grep(defined $$self{HEADERS}->{$_},
+		'Author', 'Keywords', 'Date'
+	       )
+	  )
+      );
+  push(@head, "<meta name=\"Generator\" content=\"CGI::WeT $version\">\n");
+  push(@head, "<meta name=\"Theme\" content=\"", 
+       $self->argument('theme'),
+       "\">\n");
+  
+  push(@head, "<title>", "$$self{SITENAME} - ", 
+       scalar($self->header('Title')),
+       "</title>\n");
+  
+  $self->{'THEME'} ||= new CGI::WeT::Theme($self->argument('theme'))
+    || new CGI::WeT::Theme($self->{'DEFAULT_THEME'});
+  
+  $layout = $self->{'THEME'}->page_type(($self->header('Type')), 'DEFAULT');
+  
+  if($layout->has_css) {
+    push(@head, "<style type=\"text/css\">", "<!-- ");
+    push(@head, @ { $layout->CSS });
+    push(@head, " -->","</style>");
+  }
+  if(defined $layout->BODY) { 
+    my($bodyinfo) = $layout->BODY;
+    push(@output, "<body");
+    push(@output, " background=\"$bodyinfo->{'background'}\"")
+      if exists $bodyinfo->{'background'};
+    foreach ('bgcolor', 'text', 'link', 'vlink', 'alink') {
+      push(@output, " $_=\"#$bodyinfo->{$_}\"")
+	if exists $bodyinfo->{$_};
     }
-    if(defined $layout->BODY) { 
-	my($bodyinfo) = $layout->BODY;
-	push(@output, "<body");
-	push(@output, " background=\"$bodyinfo->{'background'}\"")
-	    if exists $bodyinfo->{'background'};
-	foreach ('bgcolor', 'text', 'link', 'vlink', 'alink') {
-	    push(@output, " $_=\"#$bodyinfo->{$_}\"")
-		if exists $bodyinfo->{$_};
-	}
-	push(@output, ">");
-    } else {
-	push(@output, "<body>");
+    push(@output, ">");
+  } else {
+    push(@output, "<body>");
+  }
+  
+  $self->content_push($layout->LAYOUT);
+  push(@output, $self->render_content);
+  my $sk;
+  foreach $sk (keys % { $self->{'SCRIPTS'} }) {
+    if($self->{'SCRIPTS'}->{$sk}) {
+      push(@head, "<script language=\"$sk\">", "<!--\n");
+      my $jk;
+      foreach $jk (keys % { $self->{'SCRIPTS'}->{$sk} }) {
+	push(@head, "// for $jk\n",
+	     join("\n", @ { $self->{'SCRIPTS'}->{$sk}->{$jk} }));
+      }
+      push(@head, "\n// -->", "</script>");
     }
+  }
 
-    $self->content_push($layout->LAYOUT);
-    push(@output, $self->render_content);
-    push(@output, "</body>");
-    my $sk;
-    foreach $sk (keys % { $self->{'SCRIPTS'} }) {
-	if($self->{'SCRIPTS'}->{$sk}) {
-	    push(@head, "<script language=\"$sk\">", "<!--\n");
-	    my $jk;
-	    foreach $jk (keys % { $self->{'SCRIPTS'}->{$sk} }) {
-		push(@head, "// for $jk\n",
-		     join("\n", @ { $self->{'SCRIPTS'}->{$sk}->{$jk} }));
-	    }
-	    push(@head, "\n// -->", "</script>");
-	}
-    }
-    
-    return ("<html>\n", "<head>\n", @head, "\n</head>\n", @output, 
-	    "\n</html>\n");
+  return ("<html>\n", "<head>\n", @head, "\n</head>\n", @output,
+          $self->end_html);
 }
 
 sub handler {
-    my $engine = new CGI::WeT::Engine;
-    my($r, $fh, $res);
-    
-    if($engine->{'FILTERED'}) {
-	$r = $_[0];
-	($fh, $res) = Apache->filter_input();
+  no strict "subs";
+  my $engine = new CGI::WeT::Engine;
+  my($r, $fh, $res);
+  
+  if($engine->{'FILTERED'}) {
+    $r = $_[0];
+    ($fh, $res) = Apache->filter_input();
+  } else {
+    $r = shift;
+    $fh = new IO::File;  
+    my $filename = $r->filename;
+    if($fh->open("<$filename")) {
+      $res = Apache::Constants::OK;
     } else {
-	$r = shift;
-	$fh = new IO::File;
-	my $filename = $r->filename;
-	if($fh->open("<$filename")) {
-	    $res = Apache::Constants::OK;
-	} else {
-	    $res = Apache::Constants::NOT_FOUND;
-	}
+      $res = Apache::Constants::NOT_FOUND;
     }
-
-    unless($res == Apache::Constants::OK) {
-	$engine->internal_use_only(); # don't output the html
-	return $res; 
+  }
+  
+  unless($res == Apache::Constants::OK) {
+    $engine->internal_use_only(); # don't output the html
+    return $res; 
+  }
+  
+  my ($key, $val);
+  
+  while(<$fh>) {
+    last if /^\s*$/;
+    next if /^\s*\#/;
+    chomp;
+    if(/^[A-Za-z_]+:/) {
+      ($key, $val) = split(/:\s*/,$_,2);
+    } else {
+      $val = $_;
     }
-
-    my ($key, $val);
-
-    while(<$fh>) {
-	last if /^\s*$/;
-	next if /^\s*\#/;
-	chomp;
-	if(/^[A-Za-z_]+:/) {
-	    ($key, $val) = split(/:\s*/,$_,2);
-	} else {
-	    $val = $_;
-	}
-	$engine->headers_push($key, $val);
-    }
-
-    _handler($fh, $engine);
-    
-    return Apache::Constants::OK unless $r->is_initial_req;
-    return Apache::Constants::DONE;
-    # rendering done on $engine destruction
+    $engine->headers_push($key, $val);
+  }
+  
+  _handler($fh, $engine);
+  
+  return Apache::Constants::OK unless $r->is_initial_req;
+  return Apache::Constants::DONE;
+  # rendering done on $engine destruction
 }
 
 #
@@ -978,12 +1046,13 @@ sub handler {
 # of the html...  nothing too great so far
 #
 sub _handler {
-    my($in, $out) = @_;
-    
-    #
-    # slurp up the rest of the file
-    #
-    $out->print($_) while(<$in>);
+  my($in, $out) = @_;
+  
+  #
+  # slurp up the rest of the file
+  #
+  #$out->print($_) while(<$in>);
+  $out->print(<$in>);
 }
     
 1;
@@ -993,11 +1062,12 @@ sub _handler {
 =head1 SEE ALSO
 
 perl(1),
+CGI(3),
 CGI::WeT(3),
 CGI::WeT::Theme(3),
 CGI::WeT::Modules(3),
 
-CGI::WeT notes at C<http://hex.nostrum.com/cgi-wet/>
+CGI::WeT notes at C<http://www.jamesmith.com/cgi-wet/>
 
 =head1 AUTHORS
 

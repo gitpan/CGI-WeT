@@ -1,5 +1,5 @@
 #
-# $Id: News.pm,v 1.8 1999/05/14 01:13:06 jsmith Exp $
+# $Id: News.pm,v 1.9 1999/05/30 16:49:33 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -12,7 +12,7 @@
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 # FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# The author may be reached at <jsmith@nostrum.com>
+# The author may be reached at <jsmith@jamesmith.com>
 #
 
 package CGI::WeT::Modules::News;
@@ -21,7 +21,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-( $VERSION ) = '$Revision: 1.8 $ ' =~ /\$Revision:\s+([^\s]+)/;
+( $VERSION ) = '$Revision: 1.9 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod 
 

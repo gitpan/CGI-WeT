@@ -1,6 +1,6 @@
 #! /usr/bin/perl
 
-# $Id: contribute.form.cgi,v 1.11 1999/05/14 01:13:06 jsmith Exp $
+# $Id: contribute.form.cgi,v 1.12 1999/05/30 16:52:35 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -13,7 +13,7 @@
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 # FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# The author may be reached at <jsmith@nostrum.com>
+# The author may be reached at <jsmith@jamesmith.com>
 #
 
 #

@@ -15,7 +15,7 @@
 # The author may be reached at <jsmith@jamesmith.com>
 #
 
-package CGI::WeT::Theme::Loader::WeT;
+package CGI::WeT::Theme::Loader::HTML;
 
 use strict;
 use Carp;
@@ -27,11 +27,11 @@ use vars qw($VERSION);
 
 =head1 NAME
 
-CGI::WeT::Theme::Loader::WeT - Module to load pre-0.6 themes
+CGI::WeT::Theme::Loader::HTML - Module to load HTML theme definitions
 
 =head1 SYNOPSIS
 
-    use CGI::WeT::Theme::Loader::WeT ();
+    use CGI::WeT::Theme::Loader::HTML ();
 
 =head1 DESCRIPTION
 
@@ -51,35 +51,35 @@ sub factory {
 
     if($ENV{MOD_PERL}) {
 	$r = Apache->request;
-	$themedir = $r->dir_config('WeT_WeTThemeLoaderURL');
-	$codedir = $r->dir_config('WeT_WeTThemeCodeDir') || 
+	$themedir = $r->dir_config('WeT_HTMLThemeLoaderURL');
+	$codedir = $r->dir_config('WeT_HTMLThemeCodeDir') || 
 	    $r->document_root . "/$themedir";
 	$self->{'URLBASES'}->{'THEMEDIR'} = "$themedir/$theme";
 	$self->{'URLBASES'}->{'GRAPHICS'} = "$themedir/$theme/images";
     } else {
     }
 
-    if(-e "$codedir/$theme/main_config.pl") {
-	require "$codedir/$theme/main_config.pl";
+    if(-e "$codedir/$theme/pages" && -d _) {
+        # read in pages and build definitions
     }
-    if(defined & { "CGI::WeT::Theme::Loader::WeT::$theme\::Init" }) {
-	no strict;
-	$self->{'DEFINITION'} = 
-	    & { "CGI::WeT::Theme::Loader::WeT::$theme\::Init" } ();
-    } else {
-	$self->{'DEFINITION'} = {};
-    }
+    #if(defined & { "CGI::WeT::Theme::Loader::WeT::$theme\::Init" }) {
+	#no strict;
+	#$self->{'DEFINITION'} = 
+	    #& { "CGI::WeT::Theme::Loader::WeT::$theme\::Init" } ();
+    #} else {
+	#$self->{'DEFINITION'} = {};
+    #}
     
-    if(-e "$codedir/$theme/sitemap.pl") {
-	require "$codedir/$theme/sitemap.pl";
+    if(-e "$codedir/$theme/sitemap.html") {
+	#require "$codedir/$theme/sitemap.pl";
     }
-    if(defined & { "CGI::WeT::Theme::Loader::WeT::$theme\::SiteMap" }) {
-	no strict;
-	$self->{'SITEMAP'} = new CGI::WeT::Theme::Aux::SiteMap
-	    & { "CGI::WeT::Theme::Loader::WeT::$theme\::SiteMap" };
-    } else {
-	$self->{'SITEMAP'} = new CGI::WeT::Theme::Aux::SiteMap;
-    }
+    #if(defined & { "CGI::WeT::Theme::Loader::WeT::$theme\::SiteMap" }) {
+	#no strict;
+	#$self->{'SITEMAP'} = new CGI::WeT::Theme::Aux::SiteMap
+	    #& { "CGI::WeT::Theme::Loader::WeT::$theme\::SiteMap" };
+    #} else {
+	#$self->{'SITEMAP'} = new CGI::WeT::Theme::Aux::SiteMap;
+    #}
 
     if($ENV{MOD_PERL} && $r->uri =~ /^([^\?]*)/) { 
 	$url = $1;
@@ -89,20 +89,20 @@ sub factory {
 	$url = '/';
     }
 
-    if(-e "$codedir/$theme/navmap.txt") {
-	open IN, "<$codedir/$theme/navmap.txt";
-	my @nav = (<IN>);
-	close IN;
-	chomp(@nav);
+    #if(-e "$codedir/$theme/navmap.txt") {
+	#open IN, "<$codedir/$theme/navmap.txt";
+	#my @nav = (<IN>);
+	#close IN;
+	#chomp(@nav);
 
-	my @urlparts = split("/", $url);
-	my @paths = grep(m|^$url|, @nav);
-	my $myurl;
-	while(@urlparts && !@paths) {
-	    pop @urlparts;
-	    $myurl = join("/", @urlparts);
-	    @paths = grep(/^$myurl\/?/, @nav);
-	}
+	#my @urlparts = split("/", $url);
+	#my @paths = grep(m|^$url|, @nav);
+	#my $myurl;
+	#while(@urlparts && !@paths) {
+	    #pop @urlparts;
+	    #$myurl = join("/", @urlparts);
+	    #@paths = grep(/^$myurl\/?/, @nav);
+	#}
 
 	my($key, $p, @ps, %lengths);
 	foreach (@paths) {
@@ -128,8 +128,8 @@ sub list_themes {
 
     if($ENV{MOD_PERL}) {
 	$r = Apache->request;
-	$themedir = $r->dir_config('WeT_WeTThemeLoaderURL');
-	$codedir = $r->dir_config('WeT_WeTThemeCodeDir') || 
+	$themedir = $r->dir_config('WeT_HTMLThemeLoaderURL');
+	$codedir = $r->dir_config('WeT_HTMLThemeCodeDir') || 
 	    $r->document_root . "/$themedir";
     } else {
     }

@@ -1,5 +1,5 @@
 #
-# $Id: User.pm,v 1.9 1999/05/14 01:13:06 jsmith Exp $
+# $Id: User.pm,v 1.11 1999/05/30 16:51:19 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -12,7 +12,7 @@
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 # FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# The author may be reached at <jsmith@nostrum.com>
+# The author may be reached at <jsmith@jamesmith.com>
 #
 
 package CGI::WeT::User;
@@ -22,7 +22,7 @@ use Carp;
 use vars qw($VERSION);
 use integer;
 
-( $VERSION ) = '$Revision: 1.9 $ ' =~ /\$Revision:\s+([^\s]+)/;
+( $VERSION ) = '$Revision: 1.11 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -119,6 +119,7 @@ sub _do_query {
     my $engine = shift;
     my $maxfound = shift;
     my (@query) = @_;
+    my(@res);
     my $self;
     my $numfound = 0;
     my $r;
@@ -126,7 +127,7 @@ sub _do_query {
     
     if($engine->{'USER'}->{'DBI'}) {
 	# query the last one that worked...
-	my(@res) = $engine->{'USER'}->{'DBI'}->query(@query);
+	(@res) = $engine->{'USER'}->{'DBI'}->query(@query);
         if($maxfound == 1 && scalar(@res) == 1) {
             $self = $res[0];
             $numfound = 1;
@@ -140,7 +141,7 @@ sub _do_query {
 	no strict;
 	$engine->{'USER'}->{'DBI'} =
 	    &{ "CGI::WeT::User::DBI::$dbi\::new" }("CGI::WeT::User::DBI::$dbi");
-	my(@res) = $engine->{'USER'}->{'DBI'}->query(@query);
+	(@res) = $engine->{'USER'}->{'DBI'}->query(@query);
         if($maxfound == 1 && scalar(@res) == 1) {
             $self = $res[0];
             $numfound = 1;
@@ -149,7 +150,7 @@ sub _do_query {
             $numfound = scalar(@res);
         }
     } else {
-	my(@res) = ();
+	(@res) = ();
 	my(@dbis) = map(/(.*)::$/,
 			keys %CGI::WeT::User::DBI::
 			);
@@ -158,7 +159,7 @@ sub _do_query {
 	    no strict;
 	    $engine->{'USER'}->{'DBI'} =
 		&{ "CGI::WeT::User::DBI::$dbi\::new" }("CGI::WeT::User::DBI::$dbi");
-	    my(@res) = $engine->{'USER'}->{'DBI'}->query(@query);
+	    (@res) = $engine->{'USER'}->{'DBI'}->query(@query);
 	}
         if($maxfound == 1 && scalar(@res) == 1) {
             $self = $res[0];

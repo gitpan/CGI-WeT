@@ -9,8 +9,10 @@ lib/CGI/WeT.pm
 lib/CGI/WeT/Engine.pm
 lib/CGI/WeT/Modules/Basic.pm
 lib/CGI/WeT/Modules/Calendar.pm
+lib/CGI/WeT/Modules/Documentation.pm
 lib/CGI/WeT/Modules/News.pm
 lib/CGI/WeT/Theme.pm
+lib/CGI/WeT/Theme/Loader/HTML.pm
 lib/CGI/WeT/Theme/Loader/WeT.pm
 lib/CGI/WeT/User.pm
 lib/CGI/WeT/User/DBI/LDAP.pm

@@ -1,6 +1,15 @@
+-----
+ABOUT
+-----
 CGI::WeT is a package to help build a website with the ability to offer
 looks for the same content.  CGI::WeT prefers Apache with mod_perl but can
 be made to work without mod_perl with a little more effort.
+
+Version 0.70 is primarily a bug-fix and beta code release.
+
+-------
+INSTALL
+-------
 
 To install CGI::WeT run the following commands:
 
@@ -21,6 +30,20 @@ Available man pages are
 
 The `scripts' directory has some sample scripts that should work with mod_perl.
 The `themes' directory has a sample theme to illustrate how themes are created.
+
+-------
+ROADMAP
+-------
+
+Where is CGI::WeT going?  
+
+Beginning code is in place to allow CGI::WeT to take the place of the CGI 
+module in cgi scripts.  Work will continue through the next several 0.7x 
+releases.
+
+Additional theme definition formats will be coming.  Formost is the use of
+HTML to define themes.  Possible look at HTML::Template for some pointers.
+This might be waiting for Perl 5.6 with its regexp extensions...
 
 -------
 CHANGES

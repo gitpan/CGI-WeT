@@ -1,5 +1,5 @@
 #
-# $Id: LDAP.pm,v 1.6 1999/05/14 01:13:06 jsmith Exp $
+# $Id: LDAP.pm,v 1.7 1999/05/30 16:51:19 jsmith Exp $
 #
 # Author: James G. Smith, Aaron Du Mar
 #
@@ -12,7 +12,7 @@
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 # FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# The author may be reached at <jsmith@nostrum.com>
+# The author may be reached at <jsmith@jamesmith.com>
 #
 
 package CGI::WeT::User::DBI::LDAP;
@@ -23,7 +23,7 @@ use Carp;
 
 use vars qw($VERSION);
 
-( $VERSION ) = '$Revision: 1.6 $ ' =~ /\$Revision:\s+([^\s]+)/;
+( $VERSION ) = '$Revision: 1.7 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 

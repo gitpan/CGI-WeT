@@ -1,3 +1,12 @@
+Release 0.70
+     Changed behavior of engine->filename
+     Added ...::Modules::Documentation
+     Updated email/web location - should be accurate for a while.
+     Changed from the tuple versioning to a CPAN friendly versioning.
+     Began transition to CGI based modules
+     Navigation is better behaved when only the current level is displayed
+     Bug fixes.
+
 Release 0.6.4 (almost 0.7...)
      Changed to the Artistic License.
      Default theme can now be browser dependent.

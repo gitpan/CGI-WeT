@@ -1,5 +1,5 @@
 #
-# $Id: Basic.pm,v 1.13 1999/05/14 01:13:06 jsmith Exp $
+# $Id: Basic.pm,v 1.19 1999/07/19 03:48:33 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -12,7 +12,7 @@
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 # FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# The author may be reached at <jsmith@nostrum.com>
+# The author may be reached at <jsmith@jamesmith.com>
 #
 
 package CGI::WeT::Modules::Basic;
@@ -21,7 +21,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-( $VERSION ) = '$Revision: 1.13 $ ' =~ /\$Revision:\s+([^\s]+)/;
+( $VERSION ) = '$Revision: 1.19 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -124,6 +124,7 @@ sub CGI::WeT::Modules::VBOX {
         push(@output, " $_=", $engine->argument($_))
             if $engine->argument($_) !~ /^\s*$/;
     }
+    push(@output, ' nowrap') if defined $engine->argument('nowrap');
 
     push(@output, ' background="', 
 	 $engine->url('@@GRAPHICS@@/', $engine->argument('background')))
@@ -479,6 +480,11 @@ sub CGI::WeT::Modules::NAVIGATION {
     my(@keys);
     my($bt, $et, $bullet, $picdir, $join, $jjoin, $k, $line);
     my($loc, @navcomps, $nextlevel, $mysitemap, $up, $link);
+    my $class;
+
+    if($engine->argument('class')) {
+      $class = ' class="' . $engine->argument('class') . '"';
+    }
 
     if($engine->argument('type') eq 'text') {
 	if($engine->argument('bullet')) {
@@ -540,14 +546,14 @@ sub CGI::WeT::Modules::NAVIGATION {
 	my $top = $engine->argument('top');
 	if($engine->argument('type') eq 'text') {
 	    push(@output, "$bullet<a href=\"", $engine->url('@@TOP@@'),
-		 "\">$top</a>");
+		 "$class\">$top</a>");
 	} else {
 	    if($engine->argument('javascript') ne 'no') {
 		my $suffix = $engine->argument('suffix');
 		push(@output, "<script language=\"javascript\">\n<!---\n",
 		     "self.js_nav_but[\"$top\"] = new self.js_nav_button(\"$picdir/top$suffix\", \"$top\");\n//-->\n</script>");
 	    }
-	    push(@output, "$bullet<a href=\"", $engine->url('@@TOP@@'),"\"");
+	    push(@output, "$bullet<a$class href=\"", $engine->url('@@TOP@@'),"\"");
 	    if($engine->argument('javascript') ne 'no') {
 		push(@output, " onmouseover=\"self.js_nav_moveover('$top'); return true \" onmouseout=\"self.js_nav_moveaway('$top')\"");
 	    }
@@ -561,7 +567,7 @@ sub CGI::WeT::Modules::NAVIGATION {
        $engine->{'THEME'}->NAVPATH eq 'Top') {
 	my $sitemap = $engine->{'THEME'}->SITEMAP;
 	foreach ($sitemap->KEYS) {
-	    my $line = " $join $bullet<a href=\""
+	    my $line = " $join $bullet<a$class href=\""
 		. $engine->url($sitemap->{$_}->{'location'}) . "\"";
 	    
 	    if($engine->argument('type') eq 'text') {
@@ -571,7 +577,7 @@ sub CGI::WeT::Modules::NAVIGATION {
 		    $sitemap->{$_}->{'location'};
 		$loc =~ s,/$,,;
 		$loc =~ s,\.([^/]*)$,,;
-		$loc = $engine->url($picdir, $loc, 
+		$loc = $engine->url($picdir, '/', $loc, 
 				    $engine->argument('suffix'));
 		if($engine->argument('javascript') ne 'no') {
 		    push(@output, "<script language=\"javascript\">\n<!---\n",
@@ -583,8 +589,8 @@ sub CGI::WeT::Modules::NAVIGATION {
 		}
 		push(@output, "><img border=0 src=\"$loc\" alt=\"$_\" name=\"$_\"></a>");
 	    }
+	    $join = $jjoin;
 	}
-	$join = $jjoin;
     } else {
 	my @navcomps = split(/\|/, $engine->{'THEME'}->NAVPATH);
 	my $sitemap;
@@ -600,7 +606,7 @@ sub CGI::WeT::Modules::NAVIGATION {
 	    $nextlevel = 'Top';
 	    my $uptxt = $engine->argument('up') || 'Up';
 	    if($engine->argument('type') eq 'text') {
-		$up = " $join $bullet<a href=\"" . $engine->url('@@TOP@@')
+		$up = " $join $bullet<a$class href=\"" . $engine->url('@@TOP@@')
 		    . "\">$uptxt</a>";
 	    } else {
 		my $loc = join("", $picdir, "/up", 
@@ -617,7 +623,7 @@ self.js_nav_but["$uptxt"] = new self.js_nav_button("$loc", "$uptxt");
 		} else { 
 		    $up = ''; 
 		}
-		$up .= " $join $bullet<a href=\"" . $engine->url('@@TOP@@')
+		$up .= " $join $bullet<a$class href=\"" . $engine->url('@@TOP@@')
 		    . "\"";
 		if($engine->argument('javascript') ne 'no') {
 		    $up .= " onmouseover=\"self.js_nav_moveover('$uptxt'); return true \" onmouseout=\"self.js_nav_moveaway('$uptxt')\"";
@@ -628,7 +634,7 @@ self.js_nav_but["$uptxt"] = new self.js_nav_button("$loc", "$uptxt");
 		$sitemap = $sitemap->submap($nextlevel);
 		$nextlevel = shift @navcomps;
 		if($engine->argument('type') eq 'text') {
-		    $up = " $join $bullet<a href=\""
+		    $up = " $join $bullet<a$class href=\""
 			. $engine->url($sitemap->{$nextlevel}->{'location'})
 			    . "\">$uptxt</a>";
 		} else {
@@ -646,7 +652,7 @@ self.js_nav_but["$uptxt"] = new self.js_nav_button("$loc", "$uptxt");
 		    } else { 
 			$up = ''; 
 		    }
-		    $up .= " $join $bullet<a href=\"" 
+		    $up .= " $join $bullet<a$class href=\"" 
 			. $engine->url($sitemap->{$nextlevel}->{'location'})
 			. "\"";
 		    if($engine->argument('javascript') ne 'no') {
@@ -682,12 +688,17 @@ sub doNavigation {
     my($sitemap, $engine, $bullet, $indent, $join, $jjoin, @navcomps) = @_;
     my(@output);
     my $key;
+    my $class;
+
+    if($engine->argument('class')) { 
+      $class = ' class="' . $engine->argument('class') .'"'; 
+    }
 
     my $nextlevel = shift @navcomps;
     return '' unless $sitemap;
     foreach $key ($sitemap->KEYS) {
 	my $line;
-	my $link = "<a href=\"" . $engine->url($sitemap->{$key}->{'location'}) 
+	my $link = "<a$class href=\"" . $engine->url($sitemap->{$key}->{'location'}) 
 	    . "\"";
 	if($engine->argument('type') eq 'text') {
 	    $line = $key;
@@ -750,6 +761,11 @@ sub CGI::WeT::Modules::NAVPATH {
     my $sitemap = $engine->{'THEME'}->SITEMAP;
     my($join, $ellipses, @path);
     my $top = $engine->argument('top') || 'Top';
+    my $class;
+
+    if($engine->argument('class')) {
+      $class = ' class="' . $engine->argument('class') . '"';
+    }
 
     if($engine->argument('type') eq 'text') {
 	$join = $engine->argument('join');
@@ -782,7 +798,7 @@ sub CGI::WeT::Modules::NAVPATH {
     }
 
     @path = split(/\|/, $engine->{'THEME'}->NAVPATH);
-    push(@output, "<a href=\"", $engine->url('@@TOP@@'), "\">$top</a>");
+    push(@output, "<a$class href=\"", $engine->url('@@TOP@@'), "\">$top</a>");
     shift @path if $path[0] eq 'Top';
     
     if($engine->argument('depth') < $#path) {
@@ -796,7 +812,7 @@ sub CGI::WeT::Modules::NAVPATH {
     while(@path) {
 	push(@output, " $join ");
 	if($engine->argument('type') eq 'text') {
-	    push(@output, "<a href=\"", 
+	    push(@output, "<a$class href=\"", 
 		 $engine->url($sitemap->{$path[0]}->{'location'}),
 		 "\">$path[0]</a>");
 	}

@@ -1,7 +1,7 @@
 # This Makefile is for the CGI::WeT extension to perl.
 #
 # It was generated automatically by MakeMaker version
-# 5.42 (Revision: 1.216) from the contents of
+# 5.42 (Revision: 1.2) from the contents of
 # Makefile.PL. Don't edit this file, edit Makefile.PL instead.
 #
 #	ANY CHANGES MADE HERE WILL BE LOST!
@@ -16,22 +16,22 @@
 
 # --- MakeMaker const_config section:
 
-# These definitions are from config.sh (via /usr/lib/perl5/i386-linux/5.00405/Config.pm)
+# These definitions are from config.sh (via /usr/lib/perl5/i386-openbsd/5.00404/Config.pm)
 
 # They may have been overridden via Makefile.PL or on the command line
 AR = ar
 CC = cc
-CCCDLFLAGS = -fpic
-CCDLFLAGS = -rdynamic
+CCCDLFLAGS = -DPIC -fPIC 
+CCDLFLAGS =  
 DLEXT = so
 DLSRC = dl_dlopen.xs
-LD = cc
-LDDLFLAGS = -shared -L/usr/local/lib
-LDFLAGS =  -L/usr/local/lib
-LIBC = 
+LD = ld
+LDDLFLAGS = -Bforcearchive -Bshareable 
+LDFLAGS = 
+LIBC = /usr/lib/libc.a
 LIB_EXT = .a
 OBJ_EXT = .o
-RANLIB = :
+RANLIB = /usr/bin/ranlib
 SO = so
 EXE_EXT = 
 
@@ -41,9 +41,9 @@ AR_STATIC_ARGS = cr
 NAME = CGI::WeT
 DISTNAME = CGI-WeT
 NAME_SYM = CGI_WeT
-VERSION = 0.6.4
-VERSION_SYM = 0_6_4
-XS_VERSION = 0.6.4
+VERSION = 0.70
+VERSION_SYM = 0_70
+XS_VERSION = 0.70
 INST_BIN = ./blib/bin
 INST_EXE = ./blib/script
 INST_LIB = ./blib/lib
@@ -52,20 +52,20 @@ INST_SCRIPT = ./blib/script
 PREFIX = /usr
 INSTALLDIRS = site
 INSTALLPRIVLIB = $(PREFIX)/lib/perl5
-INSTALLARCHLIB = $(PREFIX)/lib/perl5/i386-linux/5.00405
+INSTALLARCHLIB = $(PREFIX)/lib/perl5/i386-openbsd/5.00404
 INSTALLSITELIB = $(PREFIX)/lib/perl5/site_perl
-INSTALLSITEARCH = $(PREFIX)/lib/perl5/site_perl/i386-linux
+INSTALLSITEARCH = $(PREFIX)/lib/perl5/site_perl/i386-openbsd
 INSTALLBIN = $(PREFIX)/bin
 INSTALLSCRIPT = $(PREFIX)/bin
 PERL_LIB = /usr/lib/perl5
-PERL_ARCHLIB = /usr/lib/perl5/i386-linux/5.00405
+PERL_ARCHLIB = /usr/lib/perl5/i386-openbsd/5.00404
 SITELIBEXP = /usr/lib/perl5/site_perl
-SITEARCHEXP = /usr/lib/perl5/site_perl/i386-linux
+SITEARCHEXP = /usr/lib/perl5/site_perl/i386-openbsd
 LIBPERL_A = libperl.a
 FIRST_MAKEFILE = Makefile
 MAKE_APERL_FILE = Makefile.aperl
 PERLMAINCC = $(CC)
-PERL_INC = /usr/lib/perl5/i386-linux/5.00405/CORE
+PERL_INC = /usr/lib/perl5/i386-openbsd/5.00404/CORE
 PERL = /usr/bin/perl
 FULLPERL = /usr/bin/perl
 
@@ -97,21 +97,13 @@ C_FILES =
 O_FILES = 
 H_FILES = 
 MAN1PODS = 
-MAN3PODS = lib/CGI/WeT.pm \
-	lib/CGI/WeT/Engine.pm \
-	lib/CGI/WeT/Modules/Basic.pm \
-	lib/CGI/WeT/Modules/Calendar.pm \
-	lib/CGI/WeT/Modules/News.pm \
-	lib/CGI/WeT/Theme.pm \
-	lib/CGI/WeT/Theme/Loader/WeT.pm \
-	lib/CGI/WeT/User.pm \
-	lib/CGI/WeT/User/DBI/LDAP.pm
-INST_MAN1DIR = ./blib/man1
-INSTALLMAN1DIR = /usr/man/man1
-MAN1EXT = 1
-INST_MAN3DIR = ./blib/man3
-INSTALLMAN3DIR = $(PREFIX)/lib/perl5/man/man3
-MAN3EXT = 3
+MAN3PODS = 
+INST_MAN1DIR = 
+INSTALLMAN1DIR = 
+MAN1EXT = 0
+INST_MAN3DIR = 
+INSTALLMAN3DIR = 
+MAN3EXT = 0
 
 # work around a famous dec-osf make(1) feature(?):
 makemakerdflt: all
@@ -148,8 +140,10 @@ TO_INST_PM = lib/CGI/WeT.pm \
 	lib/CGI/WeT/Engine.pm \
 	lib/CGI/WeT/Modules/Basic.pm \
 	lib/CGI/WeT/Modules/Calendar.pm \
+	lib/CGI/WeT/Modules/Documentation.pm \
 	lib/CGI/WeT/Modules/News.pm \
 	lib/CGI/WeT/Theme.pm \
+	lib/CGI/WeT/Theme/Loader/HTML.pm \
 	lib/CGI/WeT/Theme/Loader/WeT.pm \
 	lib/CGI/WeT/User.pm \
 	lib/CGI/WeT/User/DBI/LDAP.pm
@@ -158,6 +152,8 @@ PM_TO_BLIB = lib/CGI/WeT/User.pm \
 	$(INST_LIB)/CGI/WeT/User.pm \
 	lib/CGI/WeT.pm \
 	$(INST_LIB)/CGI/WeT.pm \
+	lib/CGI/WeT/Modules/Documentation.pm \
+	$(INST_LIB)/CGI/WeT/Modules/Documentation.pm \
 	lib/CGI/WeT/Modules/Calendar.pm \
 	$(INST_LIB)/CGI/WeT/Modules/Calendar.pm \
 	lib/CGI/WeT/Theme.pm \
@@ -171,7 +167,9 @@ PM_TO_BLIB = lib/CGI/WeT/User.pm \
 	lib/CGI/WeT/Modules/Basic.pm \
 	$(INST_LIB)/CGI/WeT/Modules/Basic.pm \
 	lib/CGI/WeT/User/DBI/LDAP.pm \
-	$(INST_LIB)/CGI/WeT/User/DBI/LDAP.pm
+	$(INST_LIB)/CGI/WeT/User/DBI/LDAP.pm \
+	lib/CGI/WeT/Theme/Loader/HTML.pm \
+	$(INST_LIB)/CGI/WeT/Theme/Loader/HTML.pm
 
 
 # --- MakeMaker tool_autosplit section:
@@ -188,7 +186,7 @@ AUTOSPLITFILE = $(PERL) "-I$(PERL_ARCHLIB)" "-I$(PERL_LIB)" -e 'use AutoSplit;au
 SHELL = /bin/sh
 CHMOD = chmod
 CP = cp
-LD = cc
+LD = ld
 MV = mv
 NOOP = $(SHELL) -c true
 RM_F = rm -f
@@ -314,33 +312,23 @@ config :: Version_check
 	@$(NOOP)
 
 
-$(INST_AUTODIR)/.exists :: /usr/lib/perl5/i386-linux/5.00405/CORE/perl.h
+$(INST_AUTODIR)/.exists :: /usr/lib/perl5/i386-openbsd/5.00404/CORE/perl.h
 	@$(MKPATH) $(INST_AUTODIR)
-	@$(EQUALIZE_TIMESTAMP) /usr/lib/perl5/i386-linux/5.00405/CORE/perl.h $(INST_AUTODIR)/.exists
+	@$(EQUALIZE_TIMESTAMP) /usr/lib/perl5/i386-openbsd/5.00404/CORE/perl.h $(INST_AUTODIR)/.exists
 
 	-@$(CHMOD) 755 $(INST_AUTODIR)
 
-$(INST_LIBDIR)/.exists :: /usr/lib/perl5/i386-linux/5.00405/CORE/perl.h
+$(INST_LIBDIR)/.exists :: /usr/lib/perl5/i386-openbsd/5.00404/CORE/perl.h
 	@$(MKPATH) $(INST_LIBDIR)
-	@$(EQUALIZE_TIMESTAMP) /usr/lib/perl5/i386-linux/5.00405/CORE/perl.h $(INST_LIBDIR)/.exists
+	@$(EQUALIZE_TIMESTAMP) /usr/lib/perl5/i386-openbsd/5.00404/CORE/perl.h $(INST_LIBDIR)/.exists
 
 	-@$(CHMOD) 755 $(INST_LIBDIR)
 
-$(INST_ARCHAUTODIR)/.exists :: /usr/lib/perl5/i386-linux/5.00405/CORE/perl.h
+$(INST_ARCHAUTODIR)/.exists :: /usr/lib/perl5/i386-openbsd/5.00404/CORE/perl.h
 	@$(MKPATH) $(INST_ARCHAUTODIR)
-	@$(EQUALIZE_TIMESTAMP) /usr/lib/perl5/i386-linux/5.00405/CORE/perl.h $(INST_ARCHAUTODIR)/.exists
+	@$(EQUALIZE_TIMESTAMP) /usr/lib/perl5/i386-openbsd/5.00404/CORE/perl.h $(INST_ARCHAUTODIR)/.exists
 
 	-@$(CHMOD) 755 $(INST_ARCHAUTODIR)
-
-config :: $(INST_MAN3DIR)/.exists
-	@$(NOOP)
-
-
-$(INST_MAN3DIR)/.exists :: /usr/lib/perl5/i386-linux/5.00405/CORE/perl.h
-	@$(MKPATH) $(INST_MAN3DIR)
-	@$(EQUALIZE_TIMESTAMP) /usr/lib/perl5/i386-linux/5.00405/CORE/perl.h $(INST_MAN3DIR)/.exists
-
-	-@$(CHMOD) 755 $(INST_MAN3DIR)
 
 help:
 	perldoc ExtUtils::MakeMaker
@@ -390,41 +378,10 @@ static :: Makefile $(INST_STATIC)
 
 
 # --- MakeMaker manifypods section:
-POD2MAN_EXE = /usr/bin/pod2man
-POD2MAN = $(PERL) -we '%m=@ARGV;for (keys %m){' \
--e 'next if -e $$m{$$_} && -M $$m{$$_} < -M $$_ && -M $$m{$$_} < -M "Makefile";' \
--e 'print "Manifying $$m{$$_}\n";' \
--e 'system(qq[$$^X ].q["-I$(PERL_ARCHLIB)" "-I$(PERL_LIB)" $(POD2MAN_EXE) ].qq[$$_>$$m{$$_}])==0 or warn "Couldn\047t install $$m{$$_}\n";' \
--e 'chmod 0644, $$m{$$_} or warn "chmod 644 $$m{$$_}: $$!\n";}'
 
-manifypods : lib/CGI/WeT/Engine.pm \
-	lib/CGI/WeT/User.pm \
-	lib/CGI/WeT/Theme/Loader/WeT.pm \
-	lib/CGI/WeT.pm \
-	lib/CGI/WeT/Modules/Basic.pm \
-	lib/CGI/WeT/Modules/Calendar.pm \
-	lib/CGI/WeT/Theme.pm \
-	lib/CGI/WeT/User/DBI/LDAP.pm \
-	lib/CGI/WeT/Modules/News.pm
-	@$(POD2MAN) \
-	lib/CGI/WeT/Engine.pm \
-	$(INST_MAN3DIR)/CGI::WeT::Engine.$(MAN3EXT) \
-	lib/CGI/WeT/User.pm \
-	$(INST_MAN3DIR)/CGI::WeT::User.$(MAN3EXT) \
-	lib/CGI/WeT/Theme/Loader/WeT.pm \
-	$(INST_MAN3DIR)/CGI::WeT::Theme::Loader::WeT.$(MAN3EXT) \
-	lib/CGI/WeT.pm \
-	$(INST_MAN3DIR)/CGI::WeT.$(MAN3EXT) \
-	lib/CGI/WeT/Modules/Basic.pm \
-	$(INST_MAN3DIR)/CGI::WeT::Modules::Basic.$(MAN3EXT) \
-	lib/CGI/WeT/Modules/Calendar.pm \
-	$(INST_MAN3DIR)/CGI::WeT::Modules::Calendar.$(MAN3EXT) \
-	lib/CGI/WeT/Theme.pm \
-	$(INST_MAN3DIR)/CGI::WeT::Theme.$(MAN3EXT) \
-	lib/CGI/WeT/User/DBI/LDAP.pm \
-	$(INST_MAN3DIR)/CGI::WeT::User::DBI::LDAP.$(MAN3EXT) \
-	lib/CGI/WeT/Modules/News.pm \
-	$(INST_MAN3DIR)/CGI::WeT::Modules::News.$(MAN3EXT)
+manifypods :
+	@$(NOOP)
+
 
 # --- MakeMaker processPL section:
 
@@ -451,7 +408,7 @@ clean ::
 # Delete temporary files (via clean) and also delete installed files
 realclean purge ::  clean
 	rm -rf $(INST_AUTODIR) $(INST_ARCHAUTODIR)
-	rm -f $(INST_LIB)/CGI/WeT/User.pm $(INST_LIB)/CGI/WeT.pm $(INST_LIB)/CGI/WeT/Modules/Calendar.pm $(INST_LIB)/CGI/WeT/Theme.pm $(INST_LIB)/CGI/WeT/Modules/News.pm $(INST_LIB)/CGI/WeT/Engine.pm $(INST_LIB)/CGI/WeT/Theme/Loader/WeT.pm $(INST_LIB)/CGI/WeT/Modules/Basic.pm $(INST_LIB)/CGI/WeT/User/DBI/LDAP.pm
+	rm -f $(INST_LIB)/CGI/WeT/User.pm $(INST_LIB)/CGI/WeT.pm $(INST_LIB)/CGI/WeT/Modules/Documentation.pm $(INST_LIB)/CGI/WeT/Modules/Calendar.pm $(INST_LIB)/CGI/WeT/Theme.pm $(INST_LIB)/CGI/WeT/Modules/News.pm $(INST_LIB)/CGI/WeT/Engine.pm $(INST_LIB)/CGI/WeT/Theme/Loader/WeT.pm $(INST_LIB)/CGI/WeT/Modules/Basic.pm $(INST_LIB)/CGI/WeT/User/DBI/LDAP.pm $(INST_LIB)/CGI/WeT/Theme/Loader/HTML.pm
 	rm -rf Makefile Makefile.old
 
 
@@ -583,7 +540,7 @@ pure_site_install ::
 		$(PERL_ARCHLIB)/auto/$(FULLEXT)
 
 doc_perl_install ::
-	-@$(DOC_INSTALL) \
+	@$(DOC_INSTALL) \
 		"Module" "$(NAME)" \
 		"installed into" "$(INSTALLPRIVLIB)" \
 		LINKTYPE "$(LINKTYPE)" \
@@ -592,7 +549,7 @@ doc_perl_install ::
 		>> $(INSTALLARCHLIB)/perllocal.pod
 
 doc_site_install ::
-	-@$(DOC_INSTALL) \
+	@$(DOC_INSTALL) \
 		"Module" "$(NAME)" \
 		"installed into" "$(INSTALLSITELIB)" \
 		LINKTYPE "$(LINKTYPE)" \
