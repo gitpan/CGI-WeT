@@ -1,25 +1,18 @@
 #
-# $Id: Basic.pm,v 1.5 1999/03/19 03:38:05 jsmith Exp $
+# $Id: Basic.pm,v 1.13 1999/05/14 01:13:06 jsmith Exp $
 #
 # Author: James G. Smith
 #
 # Copyright (C) 1999
 #
 # This program is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by the
-# Free Software Foundation; either version 2 of the License, or (at your
-# option) any later version.
+# under the terms of the Artistic Licence.
 #
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-# more details.
+# FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 675 Mass Ave, Cambridge, MA 02139, USA.
-#
-# The author may be reached at <j-smith@physics.tamu.edu>
+# The author may be reached at <jsmith@nostrum.com>
 #
 
 package CGI::WeT::Modules::Basic;
@@ -28,7 +21,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6.3';
+( $VERSION ) = '$Revision: 1.13 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -64,8 +57,21 @@ This extension will insert the body of the themed HTML into the rendered page.
 
 sub CGI::WeT::Modules::BODY {
     my $engine = shift;
+    my $output;
+    my @vars;
+    my $i;
 
-    return join(" ", @ { $engine->{BODY} || [ ] } );
+    foreach (@ { $engine->{BODY} || [ ] }) {
+	foreach $i (m{\@\@(.*?)\@\@}) {
+	    if(defined $engine->{'THEME'}->{'URLBASES'}->{$i}) {
+		s{\@\@$_\@\@}{$engine->{'THEME'}->{'URLBASES'}->{$i}}g;
+	    } else {
+		s{\@\@$_\@\@}{$engine->{'URLBASES'}->{$i}}g;
+	    }
+	}
+	$output .= "$_ ";
+    }
+    return $output;
 }
 
 =pod
@@ -114,12 +120,14 @@ sub CGI::WeT::Modules::VBOX {
     my(@output);
 
     push(@output, "<td");
-    foreach ('width', 'valign', 'colspan', 'rowspan', 'height', 'align',
-             'background') {
+    foreach ('width', 'valign', 'colspan', 'rowspan', 'height', 'align') {
         push(@output, " $_=", $engine->argument($_))
             if $engine->argument($_) !~ /^\s*$/;
     }
 
+    push(@output, ' background="', 
+	 $engine->url('@@GRAPHICS@@/', $engine->argument('background')))
+	if($engine->argument('background') !~ /^\s*$/);
     push(@output, " bgcolor=\"#", $engine->argument('bgcolor'), "\"")
         if defined $engine->argument('bgcolor');
     push(@output, ">");
@@ -243,6 +251,8 @@ This extension places a link relative to the top of the site around the
 content at the top of the content stack.  The argument needed is `location.'
 
 =cut
+# ` for Emacs
+# ' for Emacs
 
 sub CGI::WeT::Modules::LINK {
     my $engine = shift;
@@ -278,9 +288,7 @@ sub CGI::WeT::Modules::ROT {
     my $engine = shift;
 
     my($e1, $e2, $e3) =
-	($engine->content_pop,
-	 $engine->content_pop,
-	 $engine->content_pop);
+	($engine->content_pop(3));
     $engine->content_push($e2, $e1, $e3);
     return '';
 }
@@ -580,7 +588,7 @@ sub CGI::WeT::Modules::NAVIGATION {
     } else {
 	my @navcomps = split(/\|/, $engine->{'THEME'}->NAVPATH);
 	my $sitemap;
-	my $nextlevel = shift @navcomps;
+	my $nextlevel = 'Top';
 	my $up;
 
 	if($engine->argument('level') eq 'current') {
@@ -732,6 +740,8 @@ B<depth> - the number of levels to include in the path before dropping
 elements.
 
 =cut
+# ' for Emacs
+# ` for Emacs
 
 sub CGI::WeT::Modules::NAVPATH {
     my $engine = shift;

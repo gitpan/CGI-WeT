@@ -1,25 +1,18 @@
 #
-# $Id: Loader-Wet.pm,v 1.4 1999/03/19 03:38:05 jsmith Exp $
+# $Id: WeT.pm,v 1.8 1999/05/14 01:13:06 jsmith Exp $
 #
 # Author: James G. Smith
 #
 # Copyright (C) 1999
 #
 # This program is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by the
-# Free Software Foundation; either version 2 of the License, or (at your
-# option) any later version.
+# under the terms of the Artistic Licence.
 #
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-# more details.
+# FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 675 Mass Ave, Cambridge, MA 02139, USA.
-#
-# The author may be reached at <j-smith@physics.tamu.edu>
+# The author may be reached at <jsmith@nostrum.com>
 #
 
 package CGI::WeT::Theme::Loader::WeT;
@@ -28,7 +21,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6.3';
+( $VERSION ) = '$Revision: 1.8 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -66,24 +59,21 @@ sub factory {
     } else {
     }
 
+    if(-e "$codedir/$theme/main_config.pl") {
+	require "$codedir/$theme/main_config.pl";
+    }
     if(defined & { "CGI::WeT::Theme::Loader::WeT::$theme\::Init" }) {
 	no strict;
 	$self->{'DEFINITION'} = 
 	    & { "CGI::WeT::Theme::Loader::WeT::$theme\::Init" } ();
     } else {
-	return undef unless(-e "$codedir/$theme/main_config.pl");
-	require "$codedir/$theme/main_config.pl";
-	no strict;
-	$self->{'DEFINITION'} = 
-	    & { "CGI::WeT::Theme::Loader::WeT::$theme\::Init" } ();
+	$self->{'DEFINITION'} = {};
     }
     
-    if(defined & { "CGI::WeT::Theme::Loader::$theme\::SiteMap" }) {
-	no strict;
-	$self->{'SITEMAP'} = new CGI::WeT::Theme::Aux::SiteMap
-	    & { "CGI::WeT::Theme::Loader::WeT::$theme\::SiteMap" };
-    } elsif(-e "$codedir/$theme/sitemap.pl") {
+    if(-e "$codedir/$theme/sitemap.pl") {
 	require "$codedir/$theme/sitemap.pl";
+    }
+    if(defined & { "CGI::WeT::Theme::Loader::WeT::$theme\::SiteMap" }) {
 	no strict;
 	$self->{'SITEMAP'} = new CGI::WeT::Theme::Aux::SiteMap
 	    & { "CGI::WeT::Theme::Loader::WeT::$theme\::SiteMap" };

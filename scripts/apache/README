@@ -1,0 +1,6 @@
+The startup.pl script is what I use to load everything into Apache.  Any
+helper functions I might need are also defined there.
+
+httpd.conf is a fragment of my httpd.conf to illustrate how to set it up
+for mod_perl and CGI::WeT.
+

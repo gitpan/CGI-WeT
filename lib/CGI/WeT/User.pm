@@ -1,25 +1,18 @@
 #
-# $Id: User.pm,v 1.2 1999/03/21 02:32:06 jsmith Exp $
+# $Id: User.pm,v 1.9 1999/05/14 01:13:06 jsmith Exp $
 #
 # Author: James G. Smith
 #
 # Copyright (C) 1999
 #
 # This program is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by the
-# Free Software Foundation; either version 2 of the License, or (at your
-# option) any later version.
+# under the terms of the Artistic Licence.
 #
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-# more details.
+# FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 675 Mass Ave, Cambridge, MA 02139, USA.
-#
-# The author may be reached at <j-smith@physics.tamu.edu>
+# The author may be reached at <jsmith@nostrum.com>
 #
 
 package CGI::WeT::User;
@@ -29,7 +22,7 @@ use Carp;
 use vars qw($VERSION);
 use integer;
 
-$VERSION = '0.6.3';
+( $VERSION ) = '$Revision: 1.9 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -81,86 +74,195 @@ sub new {
     my $self = {};
     my(@query) = @_;
 
+    $class = ref($class) || $class;
+
     if(@query == 0) {
 	@query = ('username' => $ENV{'REMOTE_USER'});
     }
 
     unless(ref $engine) {
 	if(defined $engine) {
-	    $self = { ($engine, @query) };
-	} else {
-	    $self = { (@query) };
+	    unshift @query, $engine;
 	}
-    } elsif($engine->{'USER'}->{'DBI'}) {
+	$engine = { };
+    }
+    
+    return _do_query($class, $engine, 1, @query);
+}
+
+sub list {
+    my $class = shift;
+    my $engine = shift;
+    my $self = {};
+    my(@query) = @_;
+
+    $class = ref($class) || $class;
+
+    print "Getting a list of users...\n";
+
+    if(@query == 0) {
+        @query = ('username' => $ENV{'REMOTE_USER'});
+    }
+
+    unless(ref $engine) {
+        if(defined $engine) {
+            unshift @query, $engine;
+        }
+        $engine = { };
+    }
+
+    return _do_query($class, $engine, 2, @query);
+}
+
+sub _do_query {
+    my $class = shift;
+    my $engine = shift;
+    my $maxfound = shift;
+    my (@query) = @_;
+    my $self;
+    my $numfound = 0;
+    my $r;
+    my $dbi;
+    
+    if($engine->{'USER'}->{'DBI'}) {
 	# query the last one that worked...
 	my(@res) = $engine->{'USER'}->{'DBI'}->query(@query);
-	if(@res == 1) {
-	    $self = $res[0];
-	}
+        if($maxfound == 1 && scalar(@res) == 1) {
+            $self = $res[0];
+            $numfound = 1;
+        } elsif($maxfound != 1) {
+            $self = [ @res ];
+            $numfound = scalar(@res);
+        }
     } elsif($engine->{'MOD_PERL'} &&
 	    ($r = Apache->request) &&
 	    ($dbi = $r->dir_config('WeT_UserDB'))) {
 	no strict;
 	$engine->{'USER'}->{'DBI'} =
-	    new { "CGI::WeT::User::DBI::$dbi" };
+	    &{ "CGI::WeT::User::DBI::$dbi\::new" }("CGI::WeT::User::DBI::$dbi");
 	my(@res) = $engine->{'USER'}->{'DBI'}->query(@query);
-	if(@res == 1) {
-	    $self = $res[0];
-	}
+        if($maxfound == 1 && scalar(@res) == 1) {
+            $self = $res[0];
+            $numfound = 1;
+        } elsif($maxfound != 1) {
+            $self = [ @res ];
+            $numfound = scalar(@res);
+        }
     } else {
 	my(@res) = ();
 	my(@dbis) = map(/(.*)::$/,
 			keys %CGI::WeT::User::DBI::
 			);
-	while(@dbis && @res != 1) {
+	while(@dbis && !@res) {
 	    $dbi = shift @dbis;
 	    no strict;
 	    $engine->{'USER'}->{'DBI'} =
-		new { "CGI::WeT::User::DBI::$dbi" };
+		&{ "CGI::WeT::User::DBI::$dbi\::new" }("CGI::WeT::User::DBI::$dbi");
 	    my(@res) = $engine->{'USER'}->{'DBI'}->query(@query);
 	}
-	if(@res == 1) {
-	    $self = $res[0];
-	}
+        if($maxfound == 1 && scalar(@res) == 1) {
+            $self = $res[0];
+            $numfound = 1;
+        } elsif($maxfound != 1) {
+            $self = [ @res ];
+            $numfound = scalar(@res);
+        }
     }
-  
-#    $self->{'CONNECTION'} = $engine->{'USER'}->{'DBI'};
-  
-    if(defined $$self{'gn'}) {
-	my $nname;
-	if(ref $self->{'gn'}) {
-	    $nname = $self->{'gn'}->[0];
-	} else {
-	    $nname = $self->{'gn'};
-	}
-	if(defined $$self{'sn'}) {
-	    $nname .= " ";
-	    if(ref $self->{'sn'}) {
-		$nname .= $self->{'sn'}->[0];
+    
+    return undef unless $numfound > 0;
+
+    foreach my $person ($maxfound == 1 ? ($self) : (@$self)) {
+	$person->{'CONNECTION'} = $engine->{'USER'}->{'DBI'};
+	if(defined $person->{'gn'}) {
+	    my $nname;
+	    if(ref $person->{'gn'}) {
+		$nname = $person->{'gn'}->[0];
 	    } else {
-		$nname .= $self->{'sn'};
+		$nname = $person->{'gn'};
 	    }
-	    $self->{'familiarName'} = $nname;
-	} else {
-	    my $name;
-	    if(ref $self->{'cn'}) {
-		$name = $self->{'cn'}->[0];
+	    if(defined $person->{'sn'}) {
+		$nname .= " ";
+		if(ref $person->{'sn'}) {
+		    $nname .= $person->{'sn'}->[0];
+		} else {
+		    $nname .= $person->{'sn'};
+		}
+		$person->{'familiarName'} = $nname;
 	    } else {
-		$name = $self->{'cn'};
+		my $name;
+		if(ref $person->{'cn'}) {
+		    $name = $person->{'cn'}->[0];
+		} else {
+		    $name = $person->{'cn'};
+		}
+		my @names = split(/\s+/, $name);
+		pop(@names) if ($names[$#names] =~ /^I+$/i);
+		pop(@names) if ($names[$#names] =~ /^[js]r$/i);
+		$person->{'familiarName'} = "$nname $names[$#names]";
 	    }
-	    my @names = split(/\s+/, $name);
-	    pop(@names) if ($names[$#names] =~ /^I+$/i);
-	    pop(@names) if ($names[$#names] =~ /^[js]r$/i);
-	    $self->{'familiarName'} = "$nname $names[$#names]";
+	} elsif(ref $person->{'cn'}) {
+	    $person->{'familiarName'} = $person->{'cn'}->[0];
+	} else {
+	    $person->{'familiarName'} = $person->{'cn'};
 	}
-    } elsif(ref $self->{'cn'}) {
-	$self->{'familiarName'} = $self->{'cn'}->[0];
-    } else {
-	$self->{'familiarName'} = $self->{'cn'};
+
+	bless $person, $class;
     }
+    return $self;
+}
+
+sub default {
+    my $class = shift;
+    my $engine = shift;
+    my $self = {};
+
+    $self->{'familiarName'} = $engine->{'AC'};
+    $self->{'groups'} = '';
+    $self->{'name'} = $engine->{'AC'};
 
     bless $self, $class;
     return $self;
 }
 
+sub allowed {
+    my $self = shift;
+    my $groups = scalar($self->get('groups'));
+
+    return 0 if(defined $CGI::WeT::User::silentgroup &&
+		$groups =~ /\b\Q$CGI::WeT::User::silentgroup\b/);
+    
+    return 1 if(defined $CGI::WeT::User::supergroup &&
+		$groups =~ /\b\Q$CGI::WeT::User::supergroup\b/);
+
+    foreach (grep(exists $CGI::WeT::User::groups{$_}, @_)) {
+	return 0 if $groups !~ /\b\Q$_\b/;
+    }
+
+    return 1;
+}
+
+sub attributes {
+    my $self = shift;
+
+    return grep(/^[a-z]/, keys %$self);
+}
+
+sub get {
+    my $self = shift;
+    my $key = shift;
+    
+    if(wantarray) {
+	if(ref($self->{$key})) {
+	    return (@ { $self->{$key} });
+	} else {
+	    return ($self->{$key});
+	}
+    } else {
+	if(ref($self->{$key})) {
+	    return join(' ', @ { $self->{$key} });
+	} else {
+	    return $self->{$key};
+	}
+    }
+}
 1;

@@ -15,8 +15,7 @@
 /jsmith/music/:Music
 /jsmith/music/cdlist.cgi:Music|CD List
 /jsmith/music/index.cgi:Music|Composers
-/jsmith/picts/:Pictures
-/jsmith/resume.thtml:R&#233;sum&#233;
+/jsmith/picts/:Pictures/jsmith/resume.thtml:R&#233;sum&#233;
 /jsmith/wet-perls/:WeT Perls
 /jsmith/wet-perls/modules/:WeT Perls|Modules
 /jsmith/wet-perls/modules/navigation.thtml:WeT Perls|Modules|Navigation

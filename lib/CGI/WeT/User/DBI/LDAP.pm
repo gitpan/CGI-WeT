@@ -1,38 +1,29 @@
 #
-# $Id: DBI-LDAP.pm,v 1.2 1999/03/21 02:32:06 jsmith Exp $
-#
-# class CGI::WeT::User::DBI::LDAP
+# $Id: LDAP.pm,v 1.6 1999/05/14 01:13:06 jsmith Exp $
 #
 # Author: James G. Smith, Aaron Du Mar
 #
-# Copyright (C) 1998,1999
+# Copyright (C) 1998, 1999
 #
-# This library is free software; you can redistribute it and/or modify
-# it under the terms of the GNU Library General Public License as published
-# by the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the Artistic Licence.
 #
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Library General Public License for more details.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# You should have received a copy of the GNU Library General Public
-# License along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-#
-# The author may be reached at <j-smith@physics.tamu.edu> or
-# 1017 Winding Rd., College Station, TX 77840
+# The author may be reached at <jsmith@nostrum.com>
 #
 
 package CGI::WeT::User::DBI::LDAP;
 
 use Net::LDAP ();
 use strict;
+use Carp;
 
 use vars qw($VERSION);
 
-$VERSION = 0.6.3;
+( $VERSION ) = '$Revision: 1.6 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -98,15 +89,16 @@ sub new {
 sub initialize {
     my $self = shift;
 
-    $$self{'connection'} ||= new Net::LDAP($$self{'hostname'},
-					   $$self{'service'});
+    $$self{'connection'} ||= new Net::LDAP($$self{'host'},
+					   'port' => $$self{'service'})
+	or croak $@;
 }
 
 sub DESTROY {
     my $self = shift;
     
-    $$self{'connection'} -> unbind() if(defined $$self{'connection'});
-    delete $$self{'connection'};
+    $self->{'connection'}->unbind() if(defined $self->{'connection'});
+    delete $self->{'connection'};
 }
 
 sub query {
@@ -134,11 +126,11 @@ sub query {
     }
 
     $$self{'connection'} -> bind();
-    $res = $$self{'connection'} -> search(
-                                          base => $base,
-                                          filter => $filter
-                                          ) or die $@;
-    $$self{'connection'} -> unbind();
+    $res = $self->{'connection'}->search(
+					 base => $base,
+					 filter => $filter
+					 ) or croak $@;
+    $self->{'connection'}->unbind();
     
     foreach $entry ($res->all_entries) {
 	my($person, $f);

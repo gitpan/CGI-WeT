@@ -10,8 +10,5 @@ location (@@NEWS@@/<channel>/) for immediate viewing.  @@NEWS@@ is the
 directory where the news files are located (see CGI::WeT::Modules::News
 for more information).
 
-The startup.pl script is what I use to load everything into Apache.  Any
-helper functions I might need are also defined there.
-
-httpd.conf is a fragment of my httpd.conf to illustrate how to set it up
-for mod_perl and CGI::WeT.
+The apache/ directory contains some files to illustrate getting Apache up and
+running with CGI::WeT.

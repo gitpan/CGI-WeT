@@ -1,9 +1,27 @@
+Release 0.6.4 (almost 0.7...)
+     Changed to the Artistic License.
+     Default theme can now be browser dependent.
+     Theme::Loader::WeT should now reload theme code if the files have
+       changed on disk (using Perl's `require').
+     Added smarttext function to CGI::WeT::Engine.
+     CGI::WeT::Engine outputs upon destruction.
+     Added the Emacs theme.
+     Added the news contribute script.
+     Added a calendar contribution script.
+     Beginning support for Apache::Filter
+     Added CGI::WeT::Engine::internal_use_only for scripts/chooser.cgi
+     Support for building of relative URLs in $engine->url
+     Added test.pl function
+     Initial support for parsed bodies
+     Added initial support for calendars
+     Many bug fixes.
+     
 Release 0.6.3 (looks more like it should be 0.7... oh, well)
-     Added scripting support. 
+     Added scripting support.
      Added Cascading Style Sheet support.
      URLs can now be built with SSL in mind.
      Numurous bug fixes.
-     CGI::WeT::Engine->print replaces CGI::WeT::Engine->body_push (body_push 
+     CGI::WeT::Engine->print replaces CGI::WeT::Engine->body_push (body_push
        will be removed in a future release).
      Added User information classes.
      Added News extensions to engine and contribute/indexing script.
@@ -12,10 +30,11 @@ Release 0.6.3 (looks more like it should be 0.7... oh, well)
 Release 0.6.2
      Fixed a bug in Theme.pm introduced in 0.6.1
 
-Release 0.6.1 
+Release 0.6.1
      Fixed bugs in the navigation code (could be more...)
      Do a little checking for tainted URLs when converting them to filenames
      Including sample scripts.
 
-Release 0.6 
+Release 0.6
      Initial CGI::WeT release based on WeT Perls 0.5
+

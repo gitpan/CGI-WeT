@@ -1,25 +1,18 @@
 #
-# $Id: News.pm,v 1.4 1999/03/21 02:02:25 jsmith Exp $
+# $Id: News.pm,v 1.8 1999/05/14 01:13:06 jsmith Exp $
 #
 # Author: James G. Smith
 #
 # Copyright (C) 1999
 #
 # This program is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by the
-# Free Software Foundation; either version 2 of the License, or (at your
-# option) any later version.
+# under the terms of the Artistic Licence.
 #
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-# more details.
+# FITNESS FOR A PARTICULAR PURPOSE. See the Artistic License for more details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 675 Mass Ave, Cambridge, MA 02139, USA.
-#
-# The author may be reached at <j-smith@physics.tamu.edu>
+# The author may be reached at <jsmith@nostrum.com>
 #
 
 package CGI::WeT::Modules::News;
@@ -28,7 +21,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6.3';
+( $VERSION ) = '$Revision: 1.8 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod 
 
@@ -140,8 +133,8 @@ sub CGI::WeT::Modules::NEWS_SUMMARY {
 	opendir OD, "$dir" || return '';
 	(@files) = grep(/^\d/ && /\.thtml$/, readdir(OD));
 	closedir OD;
-	(@files) = sort grep(/\.$category\.thtml$/ ||
-			/\.\.thtml$/, @files)
+	(@files) = sort grep(/$category\.thtml$/ ||
+			/\d\.thtml$/, @files)
 	    if($engine->argument('category'));
     }
 
@@ -290,7 +283,7 @@ sub CGI::WeT::Modules::NEWS_NEXT {
     if(@files) {
 	use integer;
 	my($left, $right) = (0, scalar(@files));
-        my($t, $p) = ($url =~ /(\d+)\.(\d+)\./);
+        my($t, $p) = ($url =~ /(\d+)\.(\d+)/);
 	my($mid, $tt, $tp);
         while($left < $right) {
             $mid = ($left + $right) / 2;

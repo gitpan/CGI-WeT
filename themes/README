@@ -1,2 +1,6 @@
 Under code/ are the files that do not need to be served out by Apache.  Under
 html/ are the files that are served out by Apache.
+
+Only the main_config.pl file is in the non-Plain theme code directories.  The
+sitemap.pl and navmap.txt files will need to be copied from the code/Plain
+directory.

@@ -1,15 +1,3 @@
-These scripts can be used to implement a news section (or editorials,
-reviews, columns).  The files they create can be used with the engine
-extensions in CGI::WeT::Modules::News.  I have the scripts in the root news
-directory.
-
-contribute.form.cgi will accept HTML.  I am wanting to create a Smart
-Text version similar to HyperNews.  If the user is authenticated,
-the script will not ask for name and email.  Instead, it will use
-CGI::WeT::User to extract that information from the user database.
-(This distribution only provides a semi-working class for LDAP.)
-
-index.cgi will provide an index of articles in any particular channel
-(general being the default).  This can be set with something like
-/news/index.cgi?channel=mychannel as the URL.  The same holds
-(I believe) with the contribute.form.cgi script.
+The scripts in this directory should be placed in the directory specified in
+the WeT_NewsURL in httpd.conf.  For authentication, files of the form
+*.form.cgi can be linked to *.form.private.cgi.
