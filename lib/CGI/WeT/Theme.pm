@@ -1,5 +1,5 @@
 #
-# $Id: Theme.pm,v 1.3 1999/03/06 20:07:31 jsmith Exp $
+# $Id: Theme.pm,v 1.4 1999/03/19 03:38:05 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -28,7 +28,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6.2';
+$VERSION = '0.6.3';
 
 =pod
 
@@ -132,6 +132,12 @@ sub new {
     bless $self, $class;
 
     return $self;
+}
+
+sub has_css {
+    my $self = shift;
+
+    return exists $self->{'CSS'};
 }
 
 sub AUTOLOAD {

@@ -1,0 +1,17 @@
+The chooser.cgi script will send back a cookie to the browser with the
+theme set.  This is used in conjunction with the THEME_CHOOSER engine
+extension to allow browsers to choose their theme.
+
+The news/ scripts can be used in conjunction with the News engine
+extensions (CGI::WeT::Modules::News) to provide for rudimentary news
+management.  Unauthenticated stories are placed in a holding bin
+(@@NEWS@@/todo/<channel>/).  Otherwise, they are placed in the on-line
+location (@@NEWS@@/<channel>/) for immediate viewing.  @@NEWS@@ is the
+directory where the news files are located (see CGI::WeT::Modules::News
+for more information).
+
+The startup.pl script is what I use to load everything into Apache.  Any
+helper functions I might need are also defined there.
+
+httpd.conf is a fragment of my httpd.conf to illustrate how to set it up
+for mod_perl and CGI::WeT.

@@ -1,5 +1,5 @@
 #
-# $Id: Basic.pm,v 1.4 1999/03/06 20:07:13 jsmith Exp $
+# $Id: Basic.pm,v 1.5 1999/03/19 03:38:05 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -28,7 +28,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6.2';
+$VERSION = '0.6.3';
 
 =pod
 
@@ -177,6 +177,8 @@ sub CGI::WeT::Modules::TEXT {
 =item GRAPHIC
 
 This extension will place a theme dependent graphic image in the page.
+Available arguments are `location' (relative to the theme's base image URL),
+`height,' `width,' `align,' `valign,' and `name.'
 
 =cut
 
@@ -189,9 +191,9 @@ sub CGI::WeT::Modules::GRAPHIC {
 	$engine->url('@@GRAPHICS@@/', $engine->argument('location')) .
 	    "\"" if defined $engine->argument('location');
     
-    foreach ('height', 'width', 'align', 'valign') {
+    foreach ('height', 'width', 'align', 'valign', 'name') {
 	next unless defined $engine->argument($_);
-	$img .= " $_=" . $engine->argument($_);
+	$img .= " $_=\"" . $engine->argument($_) . '"';
     }
 
     return "$img>";
@@ -427,6 +429,41 @@ Otherwise, renders an outline from the top to the current level.
 
 =cut
 
+sub CGI::WeT::Scripts::NAVIGATION {
+    my $engine = shift;
+    my $suffix = $engine->argument('mouseover_suffix') || 
+	('-over' . ($engine->argument('suffix') || '.gif'));
+
+    return { 'JavaScript' => [<<1HERE1] };
+// this code based on that from http://www.gimp.org/
+var js_nav_ok = false;
+js_nav_but = new Array();
+if ( navigator.appName.substring(0,9) == "Microsoft" &&
+parseInt(navigator.appVersion) >= 4 ) js_nav_ok = true;
+if ( navigator.appName.substring(0.8) == "Netscape" &&
+parseInt(navigator.appVersion) >= 3 ) js_nav_ok = true;
+
+function js_nav_button(pic, desc) {
+  if (js_nav_ok) {
+    this.pic = new Image();
+    this.pic.src = pic;
+    this.pic_active = new Image();
+    this.pic_active.src = pic.substring(0, pic.length - 4) + "$suffix";
+    this.text = desc;
+    }
+  }
+
+function js_nav_moveover(id) {
+if (js_nav_ok) {
+document[id].src = js_nav_but[id].pic_active.src;
+window.status = js_nav_but[id].text;}}
+function js_nav_moveaway(id) {
+if (js_nav_ok) {
+document[id].src = js_nav_but[id].pic.src;
+window.status = "";}}
+1HERE1
+}
+
 sub CGI::WeT::Modules::NAVIGATION {
     my $engine = shift;
 
@@ -439,7 +476,7 @@ sub CGI::WeT::Modules::NAVIGATION {
 	if($engine->argument('bullet')) {
 	    $bullet = "<img src=\"" .
 		$engine->url('@@GRAPHICS@@', $engine->argument('bullet')) .
-		    "\" hspace=0 vspace=0 border=0";
+		    "\" hspace=0 vspace=0 border=0 alt=\"o \"";
 	    foreach ('width', 'height') {
 		$bullet .= " $_=" . $engine->argument("bullet_$_")
 		    if defined $engine->argument("bullet_$_");
@@ -456,7 +493,7 @@ sub CGI::WeT::Modules::NAVIGATION {
 	$picdir = $engine->url('@@GRAPHICS@@/', $engine->argument('type'));
 	if(defined $engine->argument('bullet')) {
 	    $bullet = "<img src=\"$picdir/" . $engine->argument('bullet') .
-		"\" hspace=0 vspace=0";
+		"\" hspace=0 vspace=0 alt=\"o \"";
 	    foreach ('width', 'height') {
 		$bullet .= " $_=" . $engine->argument("bullet_$_")
 		    if defined $engine->argument("bullet_$_");
@@ -491,27 +528,36 @@ sub CGI::WeT::Modules::NAVIGATION {
 
     push(@output, $bt);
 
-    if($engine->argument('top') eq 'yes') {
+    if($engine->argument('top')) {
+	my $top = $engine->argument('top');
 	if($engine->argument('type') eq 'text') {
 	    push(@output, "$bullet<a href=\"", $engine->url('@@TOP@@'),
-		 "\">Top</a>");
+		 "\">$top</a>");
 	} else {
-	    push(@output, "$bullet<a href=\"", $engine->url('@@TOP@@'),
-		 "\"><img border=0 src=\"$picdir/top",
-		 $engine->argument('suffix'), "\"></a>");
+	    if($engine->argument('javascript') ne 'no') {
+		my $suffix = $engine->argument('suffix');
+		push(@output, "<script language=\"javascript\">\n<!---\n",
+		     "self.js_nav_but[\"$top\"] = new self.js_nav_button(\"$picdir/top$suffix\", \"$top\");\n//-->\n</script>");
+	    }
+	    push(@output, "$bullet<a href=\"", $engine->url('@@TOP@@'),"\"");
+	    if($engine->argument('javascript') ne 'no') {
+		push(@output, " onmouseover=\"self.js_nav_moveover('$top'); return true \" onmouseout=\"self.js_nav_moveaway('$top')\"");
+	    }
+	    push(@output, "><img border=0 src=\"$picdir/top",
+		 $engine->argument('suffix'), "\" alt=\"$top\" name=\"$top\"></a>");
 	}
 	$join = $jjoin;
     }
 
-    if($engine->{'THEME'}->NAVPATH eq 'Top') {
+    if($engine->argument('level') eq 'top' ||
+       $engine->{'THEME'}->NAVPATH eq 'Top') {
 	my $sitemap = $engine->{'THEME'}->SITEMAP;
 	foreach ($sitemap->KEYS) {
 	    my $line = " $join $bullet<a href=\""
-		. $engine->url($sitemap->{$_}->{'location'}) .
-		    "\">";
+		. $engine->url($sitemap->{$_}->{'location'}) . "\"";
 	    
 	    if($engine->argument('type') eq 'text') {
-		push(@output, "$line$_</a>");
+		push(@output, "$line>$_</a>");
 	    } else {
 		my $loc = $sitemap->{$_}->{'button'} ||
 		    $sitemap->{$_}->{'location'};
@@ -519,7 +565,15 @@ sub CGI::WeT::Modules::NAVIGATION {
 		$loc =~ s,\.([^/]*)$,,;
 		$loc = $engine->url($picdir, $loc, 
 				    $engine->argument('suffix'));
-		push(@output, "$line<img border=0 src=\"$loc\" alt=\"$_\"></a>");
+		if($engine->argument('javascript') ne 'no') {
+		    push(@output, "<script language=\"javascript\">\n<!---\n",
+			 "self.js_nav_but[\"$_\"] = new self.js_nav_button(\"$loc\", \"$_\");\n//-->\n</script>");
+		}
+		push(@output, "$line");
+		if($engine->argument('javascript') ne 'no') {
+		    push(@output, " onmouseover=\"self.js_nav_moveover('$_'); return true \" onmouseout=\"self.js_nav_moveaway('$_')\"");
+		}
+		push(@output, "><img border=0 src=\"$loc\" alt=\"$_\" name=\"$_\"></a>");
 	    }
 	}
 	$join = $jjoin;
@@ -536,13 +590,31 @@ sub CGI::WeT::Modules::NAVIGATION {
 	    $sitemap->submap('Top', $engine->{'THEME'}->SITEMAP);
 	    
 	    $nextlevel = 'Top';
+	    my $uptxt = $engine->argument('up') || 'Up';
 	    if($engine->argument('type') eq 'text') {
 		$up = " $join $bullet<a href=\"" . $engine->url('@@TOP@@')
-		    . "\">Up</a>";
+		    . "\">$uptxt</a>";
 	    } else {
-		$up = " $join $bullet<a href=\"" . $engine->url('@@TOP@@')
-		    . "\"><img border=0 src=\"$picdir/up"
-			. $engine->argument('suffix'), "\"></a>";
+		my $loc = join("", $picdir, "/up", 
+			       $engine->argument('suffix'));
+		if($engine->argument('javascript') ne 'no') {
+		    $up = <<1HERE1;
+<script language="javascript">
+<!---
+self.js_nav_but["$uptxt"] = new self.js_nav_button("$loc", "$uptxt");
+//-->
+</script>
+1HERE1
+    ;
+		} else { 
+		    $up = ''; 
+		}
+		$up .= " $join $bullet<a href=\"" . $engine->url('@@TOP@@')
+		    . "\"";
+		if($engine->argument('javascript') ne 'no') {
+		    $up .= " onmouseover=\"self.js_nav_moveover('$uptxt'); return true \" onmouseout=\"self.js_nav_moveaway('$uptxt')\"";
+		}
+		$up .= "><img border=0 src=\"$loc\" alt=\"$uptxt\"></a>";
 	    }
 	    while(defined $sitemap->submap($nextlevel) && @navcomps > 1) {
 		$sitemap = $sitemap->submap($nextlevel);
@@ -550,16 +622,33 @@ sub CGI::WeT::Modules::NAVIGATION {
 		if($engine->argument('type') eq 'text') {
 		    $up = " $join $bullet<a href=\""
 			. $engine->url($sitemap->{$nextlevel}->{'location'})
-			    . "\">Up</a>";
+			    . "\">$uptxt</a>";
 		} else {
-		    $up = " $join $bullet<a href=\"" 
+		    my $loc = join("", $picdir, "/up", 
+				   $engine->argument('suffix'));
+		    if($engine->argument('javascript') ne 'no') {
+			$up = <<1HERE1;
+<script language="javascript">
+<!---
+self.js_nav_but["$uptxt"] = new self.js_nav_button("$loc", "$uptxt");
+//-->
+</script>
+1HERE1
+    ;
+		    } else { 
+			$up = ''; 
+		    }
+		    $up .= " $join $bullet<a href=\"" 
 			. $engine->url($sitemap->{$nextlevel}->{'location'})
-			    . "\"><img border=0 src=\"$picdir/up"
-				. $engine->argument('suffix'), "\"></a>";
+			. "\"";
+		    if($engine->argument('javascript') ne 'no') {
+			$up .= " onmouseover=\"self.js_nav_moveover('$uptxt'); return true \" onmouseout=\"self.js_nav_moveaway('$uptxt')\"";
+		    }
+		    $up .= "><img border=0 src=\"$loc\" alt=\"$uptxt\"></a>";
 		}
 	    }
 	    
-	    if($engine->argument('up') eq 'yes') {
+	    if($engine->argument('up')) {
 		push(@output, $up);
 		$join = $jjoin;
 	    }
@@ -572,40 +661,10 @@ sub CGI::WeT::Modules::NAVIGATION {
 	    $sitemap = $engine->{'THEME'}->SITEMAP;
 	}    
 	
-	if($sitemap) {
-	    my $key;
-	    foreach $key ($sitemap->KEYS) {
-		my $link;
-		if($engine->argument('type') eq 'text') {
-		    $link = $key;
-		} else {
-		    my $loc = $sitemap->{$key}->{'button'} ||
-			$sitemap->{$key}->{'location'};
-		    $loc =~ s,/$,,;
-		    $loc =~ s,\.([^/]*)$,,;
-		    $loc = $engine->url($picdir, $loc, 
-					$engine->argument('suffix'));
-		    $link = "<img border=0 src=\"$loc\" alt=\"$key\">";
-		}
-		if($nextlevel ne $key || !@navcomps) {
-		    $link = " $join $bullet<a href=\""
-			. $engine->url($sitemap->{$key}->{'location'}) .
-			    "\">$link</a>";
-		} else {
-		    $link = " $join $bullet$link";
-		}
-		push(@output, $link);
-		
-		$join = $jjoin;
-		if($nextlevel eq $key) {
-		    push(@output,
-			 &doNavigation( $sitemap->submap($key), $engine, 
-					$bullet,
-					$engine->argument('indent'),
-					$join, $jjoin, @navcomps) );
-		}
-	    }
-	}
+	push(@output,
+	     &doNavigation( $sitemap, $engine, $bullet, '', $join, $jjoin,
+			    @navcomps )
+	     );
     }
     push(@output, $et);
     return @output;
@@ -619,24 +678,29 @@ sub doNavigation {
     my $nextlevel = shift @navcomps;
     return '' unless $sitemap;
     foreach $key ($sitemap->KEYS) {
-	my $link;
+	my $line;
+	my $link = "<a href=\"" . $engine->url($sitemap->{$key}->{'location'}) 
+	    . "\"";
 	if($engine->argument('type') eq 'text') {
-	    $link = $key;
-	} else {
+	    $line = $key;
+	} else {		
 	    my $loc = $sitemap->{$key}->{'button'} ||
 		$sitemap->{$key}->{'location'};
 	    $loc =~ s,/$,,;
 	    $loc =~ s,\.([^/]*)$,,;
 	    $loc = $engine->url('@@GRAPHICS@@/', $engine->argument('type'),
 				'/', $loc, $engine->argument('suffix'));
-	    $link = "<img border=0 src=\"$loc\" alt=\"$key\">";
+	    if($engine->argument('javascript') ne 'no') {
+		push(@output, "<script language=\"javascript\">\n<!---\n",
+		     "self.js_nav_but[\"$key\"] = new self.js_nav_button(\"$loc\", \"$key\");\n//-->\n</script>");
+		$link .= " onmouseover=\"self.js_nav_moveover('$key'); return true \" onmouseout=\"self.js_nav_moveaway('$key')\"";
+	    }
+	    $line = "<img border=0 src=\"$loc\" alt=\"$key\" name=\"$key\">";
 	}
 	if($nextlevel ne $key || !@navcomps) {
-	    $link = " $join$indent$bullet<a href=\""
-		. $engine->url($sitemap->{$key}->{'location'}) .
-		    "\">$link</a>";
+	    $link = " $join$indent$bullet$link>$line</a>";
 	} else {
-	    $link = " $join$indent$bullet$link";
+	    $link = " $join$indent$bullet$line";
 	}
 	push(@output, $link);
 	
@@ -675,33 +739,40 @@ sub CGI::WeT::Modules::NAVPATH {
     my(@output);
     my $sitemap = $engine->{'THEME'}->SITEMAP;
     my($join, $ellipses, @path);
+    my $top = $engine->argument('top') || 'Top';
 
     if($engine->argument('type') eq 'text') {
 	$join = $engine->argument('join');
 	$ellipses= $engine->argument('ellipses') || '...';
     } else {
-	$join = "<img border=0 src=\"" .
-	    $engine->url('@@GRAPHICS@@', $engine->argument('type'),
-			 '/', $engine->argument('join')
-			 );
-	foreach ('width', 'height', 'align') {
-	    $join .= " $_=" . $engine->argumment("join_$_")
-		if $engine->argument("join_$_");
-	}
-	$join .= ">";
-	$ellipses = "<img border=0 src=\"" .
-	    $engine->url('@@GRAPHICS@@', $engine->argument('type'),
-			 '/', $engine->argument('ellipses')
-			 );
-	foreach ('width', 'height', 'align') {
-	    $ellipses .= " $_=" . $engine->argumment("ellipses_$_")
-		if $engine->argument("ellipses_$_");
-	}
-	$ellipses .= ">";
+	$join =
+	    join("", '<img border=0 src="',
+		 $engine->url('@@GRAPHICS@@/', $engine->argument('type'),
+			      '/', $engine->argument('join')
+			      ),
+		 map( (" $_=", $engine->argument("join_$_")),
+		      grep( $engine->argument("join_$_"),
+			    (qw(width height align))
+			    )
+		      ),
+		 '>'
+		 );
+	$ellipses =
+	    join("", '<img border=0 src="',
+		 $engine->url('@@GRAPHICS@@/', $engine->argument('type'),
+			      '/', $engine->argument('ellipses')
+			      ),
+		 map( (" $_=", $engine->argument("ellipses_$_")),
+		      grep( $engine->argument("ellipses_$_"),
+			    (qw(width height align))
+			    )
+		      ),
+		 '>'
+		 );
     }
 
     @path = split(/\|/, $engine->{'THEME'}->NAVPATH);
-    push(@output, "<a href=\"", $engine->url('@@TOP@@'), "\">Top</a>");
+    push(@output, "<a href=\"", $engine->url('@@TOP@@'), "\">$top</a>");
     shift @path if $path[0] eq 'Top';
     
     if($engine->argument('depth') < $#path) {
@@ -773,6 +844,106 @@ sub CGI::WeT::Modules::THEME_CHOOSER {
     return @output;
 }
 
+=pod
+
+=item ALTERNATE_THEME
+
+This extension duplicates B<LINK> except that the location is the current
+page URL and the value of the B<theme> argument is appended as part of the
+URL.
+
+=cut
+sub CGI::WeT::Scripts::ALTERNATE_THEME {
+    my $engine = shift;
+    my $suffix = $engine->argument('mouseover_suffix') || 
+	('-over' . ($engine->argument('suffix') || '.gif'));
+
+    return { 'JavaScript' => [<<1HERE1] };
+// this code based on that from http://www.gimp.org/
+var js_alt_ok = false;
+js_alt_but = new Array();
+if ( navigator.appName.substring(0,9) == "Microsoft" &&
+parseInt(navigator.appVersion) >= 4 ) js_alt_ok = true;
+if ( navigator.appName.substring(0.8) == "Netscape" &&
+parseInt(navigator.appVersion) >= 3 ) js_alt_ok = true;
+
+function js_alt_button(pic, desc) {
+  if (js_alt_ok) {
+    this.pic = new Image();
+    this.pic.src = pic;
+    this.pic_active = new Image();
+    this.pic_active.src = pic.substring(0, pic.length -     4) + "$suffix";
+    this.text = desc;
+    }
+  }
+
+function js_alt_moveover(id) {
+if (js_alt_ok) {
+document[id].src = js_alt_but[id].pic_active.src;
+window.status = js_alt_but[id].text;}}
+function js_alt_moveaway(id) {
+if (js_alt_ok) {
+document[id].src = js_alt_but[id].pic.src;
+window.status = "";}}
+1HERE1
+}
+
+sub CGI::WeT::Modules::ALTERNATE_THEME {
+    my $engine = shift;
+    my $url;
+    
+    if($ENV{MOD_PERL}) {
+	my $r = Apache->request;
+	$url = $r->uri;
+    } elsif($ENV{'REQUEST_URI'}) {
+	$url = $ENV{'REQUEST_URI'};
+    } else {
+	$url = '/';
+    }
+    if($url =~ /\?/) {
+	$url .= '&';
+    } else {
+	$url .= '?';
+    }
+    $url .= "theme=" . $engine->argument('theme');
+    my(@output);
+    if($engine->argument('javascript') ne 'no' && $engine->argument('id')) {
+	my $graphic = join(" ", $engine->render_content);
+	if($graphic =~ /src=\"(.*?)\"/) {
+	    my $gurl = $1;
+	    my $id = $engine->argument('id');
+	    push(@output, "<script language=\"javascript\">\n<!---\n",
+		 "self.js_alt_but[\"$id\"] = new self.js_alt_button(\"$gurl\", \"$id\");\n//-->\n</script>");
+	    push(@output, "<a href=\"$url\" onmouseover=\"self.js_alt_moveover('$id'); return true \" onmouseout=\"self.js_alt_moveaway('$id')\">$graphic</a>");
+	    return @output;
+	} else {
+	    return ("<a href=\"$url\">$graphic</a>");
+	}
+    } else {
+	return ("<a href=\"$url\">",
+		$engine->render_content,
+		'</a>');
+    }
+}
+
+=pod
+
+=item INCLUDE
+
+This extension will read in a file given by the B<location> argument and return
+the contents.  The file is interpreted as a local URI.
+
+=cut
+
+sub CGI::WeT::Modules::INCLUDE {
+    my $engine = shift;
+    my $file = $engine->filename($engine->argument('location'));
+    
+    open IN, "<$file";
+    my @output = (<IN>);
+    close IN;
+
+    return @output;
+}
+
 1;
-
-

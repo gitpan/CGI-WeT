@@ -15,5 +15,24 @@ Available man pages are
      CGI::WeT::Engine
      CGI::WeT::Theme
      CGI::WeT::Modules::Basic
+     CGI::WeT::Modules::News
+     CGI::WeT::User
+     CGI::WeT::User::DBI::LDAP
 
 The `scripts' directory has some sample scripts that should work with mod_perl.
+The `themes' directory has a sample theme to illustrate how themes are created.
+
+-------
+CHANGES
+-------
+
+Release 0.6.3 (looks more like it should be 0.7... oh, well)
+     Added scripting support. 
+     Added Cascading Style Sheet support.
+     URLs can now be built with SSL in mind. (still under development)
+     Numurous bug fixes.
+     CGI::WeT::Engine->print replaces CGI::WeT::Engine->body_push (body_push 
+       will be removed in a future release).
+     Added User information classes.
+     Added News extensions to engine and contribute/indexing script.
+     Added a sample Plain theme for use with CGI::WeT::Theme::Loader::WeT.

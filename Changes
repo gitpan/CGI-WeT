@@ -1,10 +1,21 @@
-Release 0.6 
-     Initial CGI::WeT release based on WeT Perls 0.5
+Release 0.6.3 (looks more like it should be 0.7... oh, well)
+     Added scripting support. 
+     Added Cascading Style Sheet support.
+     URLs can now be built with SSL in mind.
+     Numurous bug fixes.
+     CGI::WeT::Engine->print replaces CGI::WeT::Engine->body_push (body_push 
+       will be removed in a future release).
+     Added User information classes.
+     Added News extensions to engine and contribute/indexing script.
+     Added a sample Plain theme for use with CGI::WeT::Theme::Loader::WeT.
+
+Release 0.6.2
+     Fixed a bug in Theme.pm introduced in 0.6.1
 
 Release 0.6.1 
      Fixed bugs in the navigation code (could be more...)
      Do a little checking for tainted URLs when converting them to filenames
      Including sample scripts.
 
-Release 0.6.2
-     Fixed a bug in Theme.pm introduced in 0.6.1
+Release 0.6 
+     Initial CGI::WeT release based on WeT Perls 0.5

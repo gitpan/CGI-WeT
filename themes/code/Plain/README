@@ -1,0 +1,15 @@
+This file does not need to be copied.  It is here to explain the other three.
+
+main_config.pl - main configuration file.  This file defines a subroutine
+                 which will return a hash of all the templates defined by this
+                 theme.  One template _can_ call another.
+
+sitemap.pl     - the actual navigational structure of the site.  This need not
+                 be tied to the directory structure even though the directory
+                 structure is used to some extent in the absence of any other
+                 information.  This file maps logical navigational location to
+                 URL.
+
+navmap.txt     - this maps URL to logical navigational location.  There is no
+                 utility (yet) to maintain this based on sitemap.pl.
+                 Hopefully in one of the next releases.

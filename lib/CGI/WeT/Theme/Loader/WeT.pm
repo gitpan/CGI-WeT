@@ -1,5 +1,5 @@
 #
-# $Id: Loader-Wet.pm,v 1.3 1999/03/06 20:07:31 jsmith Exp $
+# $Id: Loader-Wet.pm,v 1.4 1999/03/19 03:38:05 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -28,7 +28,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6.2';
+$VERSION = '0.6.3';
 
 =pod
 
@@ -52,6 +52,9 @@ sub factory {
     my $url;
     my $self = new CGI::WeT::Theme::Aux::ThemeDef;
     my $r;
+
+    return undef unless $theme =~ /([^;]+)/;
+    $theme = $1;
 
     if($ENV{MOD_PERL}) {
 	$r = Apache->request;
