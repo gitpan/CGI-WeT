@@ -1,5 +1,5 @@
 #
-# $Id: Theme.pm,v 1.8 1999/05/30 16:51:19 jsmith Exp $
+# $Id: Theme.pm,v 1.9 1999/11/19 05:41:19 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -19,9 +19,9 @@ package CGI::WeT::Theme;
 
 use strict;
 use Carp;
-use vars qw($VERSION);
+#use vars qw($VERSION);
 
-( $VERSION ) = '$Revision: 1.8 $ ' =~ /\$Revision:\s+([^\s]+)/;
+#( $VERSION ) = '$Revision: 1.9 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 

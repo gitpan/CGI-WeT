@@ -1,5 +1,5 @@
 #
-# $Id: WeT.pm,v 1.9 1999/05/30 16:51:19 jsmith Exp $
+# $Id: WeT.pm,v 1.10 1999/11/19 05:41:19 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -19,9 +19,9 @@ package CGI::WeT::Theme::Loader::WeT;
 
 use strict;
 use Carp;
-use vars qw($VERSION);
+#use vars qw($VERSION);
 
-( $VERSION ) = '$Revision: 1.9 $ ' =~ /\$Revision:\s+([^\s]+)/;
+#( $VERSION ) = '$Revision: 1.10 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -141,3 +141,5 @@ sub list_themes {
 		   readdir(OD));
     return @themes;
 }
+
+1;

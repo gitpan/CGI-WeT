@@ -19,9 +19,9 @@ package CGI::WeT::Theme::Loader::HTML;
 
 use strict;
 use Carp;
-use vars qw($VERSION);
+#use vars qw($VERSION);
 
-( $VERSION ) = '$Revision: 1.9 $ ' =~ /\$Revision:\s+([^\s]+)/;
+#( $VERSION ) = '$Revision: 1.9 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 

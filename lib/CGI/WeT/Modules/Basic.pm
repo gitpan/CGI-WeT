@@ -1,5 +1,5 @@
 #
-# $Id: Basic.pm,v 1.19 1999/07/19 03:48:33 jsmith Exp $
+# $Id: Basic.pm,v 1.20 1999/11/19 05:42:15 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -21,7 +21,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-( $VERSION ) = '$Revision: 1.19 $ ' =~ /\$Revision:\s+([^\s]+)/;
+( $VERSION ) = '$Revision: 1.20 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -837,7 +837,7 @@ sub CGI::WeT::Modules::THEME_CHOOSER {
     my $engine = shift;
 
     my $theme;
-    my $url = $engine->url('/chooser.cgi');
+    my $url = $engine->url('/Chooser');
 
     my(@output) = (
 "<form action=\"$url\" method=\"get\">",

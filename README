@@ -1,32 +1,23 @@
------
-ABOUT
------
+                                 -------------
+                                 CGI::WeT 0.71
+                                 -------------
+
 CGI::WeT is a package to help build a website with the ability to offer
 looks for the same content.  CGI::WeT prefers Apache with mod_perl but can
 be made to work without mod_perl with a little more effort.
 
-Version 0.70 is primarily a bug-fix and beta code release.
+Version 0.71 provides almost complete emulation of CGI.pm.  Any differences
+from normal operation after converting a script from CGI to CGI::WeT
+should be considered bugs in CGI::WeT (unless they aren't).  Please
+report them to the mailing list.
 
--------
-INSTALL
--------
+To install, simply type
 
-To install CGI::WeT run the following commands:
-
-    perl Makefile.PL
-    make
-    make install
+    $ perl Makefile.PL
+    $ make
+    $ make install
 
 This should install all the man pages and perl modules.
-
-Available man pages are
-     CGI::WeT
-     CGI::WeT::Engine
-     CGI::WeT::Theme
-     CGI::WeT::Modules::Basic
-     CGI::WeT::Modules::News
-     CGI::WeT::User
-     CGI::WeT::User::DBI::LDAP
 
 The `scripts' directory has some sample scripts that should work with mod_perl.
 The `themes' directory has a sample theme to illustrate how themes are created.
@@ -37,13 +28,20 @@ ROADMAP
 
 Where is CGI::WeT going?  
 
-Beginning code is in place to allow CGI::WeT to take the place of the CGI 
-module in cgi scripts.  Work will continue through the next several 0.7x 
-releases.
-
 Additional theme definition formats will be coming.  Formost is the use of
 HTML to define themes.  Possible look at HTML::Template for some pointers.
 This might be waiting for Perl 5.6 with its regexp extensions...
+
+The code will be focusing more on presenting the page and less on building
+a complete site.  Other modules do well providing news services and
+database presentation.  CGI::WeT will focus on building the page.
+
+------------
+MAILING LIST
+------------
+
+You may subscribe to the CGI::WeT mailing list by sending an email to
+cgi-wet-request@jamesmith.com with 'subscribe' in the message body.
 
 -------
 CHANGES

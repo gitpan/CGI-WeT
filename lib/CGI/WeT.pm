@@ -1,5 +1,5 @@
 #
-# $Id: WeT.pm,v 1.9 1999/07/04 22:30:21 jsmith Exp $
+# $Id: WeT.pm,v 1.10 1999/11/19 05:41:18 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -18,30 +18,127 @@
 package CGI::WeT;
 
 use strict;
-use Carp;
-use vars qw($VERSION @ISA %EXPORT_TAGS @EXPORT @EXPORT_OK);
 use integer;
+use vars qw($VERSION @ISA $AutoloadClass);
+require CGI;
+
+use Carp;
 use CGI::WeT::Engine;
-use CGI (qw(:all !header !start_html !end_html));
+use CGI::WeT::Theme;
+use CGI::WeT::Modules::Basic;
 
 #
 # The version of this package is the version Makefile.PL wants...
 #
 
-$VERSION = '0.70';
+$VERSION = '0.71';
 
-@ISA = (qw(CGI Exporter));
+@ISA = (qw(CGI));
 
-%EXPORT_TAGS = (%CGI::EXPORT_TAGS);
-@EXPORT = (@CGI::EXPORT);
-@EXPORT_OK = (@CGI::EXPORT_OK);
+$CGI::DefaultClass = 'CGI::WeT';
+$AutoloadClass = 'CGI';
 
-use CGI::WeT::Engine;
-use CGI::WeT::User;
-use CGI::WeT::Theme;
-use CGI::WeT::Modules::Basic;
+sub new {
+  my $self = CGI::new(@_);
+
+  $self->{'CGI::WeT'}->{STDOUT} = tied *STDOUT;
+  tie *STDOUT, ref $self, $self;
+
+  return $self;
+}
+
+sub TIEHANDLE {
+  my $class = shift;
+  my $self = shift;
+
+  unless(ref $self) {
+    $self = $class->new(@_);
+  }
+
+  $self->{'CGI::WeT'}->{Engine} = new CGI::WeT::Engine; 
+  $self->{'CGI::WeT'}->{Engine}->set_query_object($self);
+  return $self;
+}
+  
+
+sub PRINT {
+  my $self = shift;
+
+  ${$$self{'CGI::WeT'}}{Engine}->print(@_);
+}
+
+sub DESTROY {
+  my $self = shift;
+
+  #untie *STDOUT;
+  delete ${$$self{'CGI::WeT'}}{Engine};
+}
+
+sub header {
+  my($self,@p) = CGI::self_or_default(@_);
+  my $type;
+
+  if(@p == 1) {
+    $type = $p[0];
+  } else {
+    my %p = @p;
+    $type = $p{'-type'} || $p{type};
+  }
+
+  if($type eq 'text/html' or not $type) {
+    tie *STDOUT, 'CGI::WeT', $self unless(ref(tied *STDOUT) eq 'CGI::WeT');
+  } else {
+    untie *STDOUT if(ref(tied *STDOUT) eq 'CGI::WeT');
+    if(${$$self{'CGI::WeT'}}{Engine}) {
+      ${$$self{'CGI::WeT'}}{Engine}->internal_use_only;
+      ${$$self{'CGI::WeT'}}{Engine}->DESTROY;
+      delete ${$$self{'CGI::WeT'}}{Engine};
+      ${$$self{'CGI::WeT'}}{Engine} = tied *STDOUT;
+    }
+  }
+
+  $self->{'CGI::WeT'}->{'Engine'}->{'doing_headers'} = 0;
+
+  return CGI::header($self,@p);
+}
+
+sub start_html {
+    my($self,@p) = CGI::self_or_default(@_);
+    my($title,$author,$base,$xbase,$script,$noscript,$target,$meta,$head,$style,
+$dtd,@other) = 
+        $self->rearrange([qw(TITLE AUTHOR BASE XBASE SCRIPT NOSCRIPT TARGET META HEAD STYLE DTD)],@p);
+
+    # strangely enough, the title needs to be escaped as HTML
+    # while the author needs to be escaped as a URL
+    
+    $title = $self->escapeHTML($title || 'Untitled Document');
+    $author = $self->escape($author);
+    ${$$self{'CGI::WeT'}}{Engine}->headers_push('Title' => $title, 'Author' => $author);
+
+    if ($meta && ref($meta) && (ref($meta) eq 'HASH')) {
+        foreach (keys %$meta) { $self->{'CGI::WeT'}->{Engine}->headers_push($_ => 
+                                                                $meta->{$_}); }
+    }
+
+    $self->{'CGI::WeT'}->{'Engine'}->{'doing_headers'} = 0;
+
+    return '';
+}
+
+sub end_html {
+  return '';
+}
+
+sub show_page {
+  my $class = shift;
+  $class = ref($class) || $class;
+  if(ref tied *STDOUT eq $class) {
+    (tied *STDOUT)->DESTROY;
+  }
+}
 
 1;
+__END__
 
 =pod
 
@@ -65,10 +162,10 @@ scripts.
 This package (CGI::WeT) will load in the following packages only.  No symbols
 are imported.
 
-    CGI::WeT::Engine;
-    CGI::WeT::User;
-    CGI::WeT::Theme;
-    CGI::WeT::Modules::Basic;
+    CGI
+    CGI::WeT::Engine
+    CGI::WeT::Theme
+    CGI::WeT::Modules::Basic
 
 =head1 Themed HTML
 
@@ -84,6 +181,8 @@ This will produce a page with `This is an example file' as part of the title
 in the head and the rest of the file as the body placed on the page according
 to the theme in force.
 
+CGI::WeT::Engine provides the mod_perl handler for static pages.
+
 =head1 Theme Definitions
 
 This part of the package depends on which theme loader is being used.  A theme
@@ -92,8 +191,26 @@ formed page.  See the appropriate CGI::WeT::Theme::Loader::*(3) page.
 
 =head1 CGI Scripts
 
-CGI scripts can be used to extend the functionality of the site and yet maintaina common look and feel according the themes.  See CGI::WeT::Engine(3) for
-more details on interfacing with the rendering engine.
+CGI::WeT can be used in place of CGI with minor modifications.  Replace
+the B<use CGI> statement with B<use CGI::WeT> at the top of the script
+and add a line to the close of the script: B<CGI::WeT->show_page>.
+
+The following is an example based on the CGI.pm book:
+
+  #!/usr/bin/perl
+  # Script: plaintext2.pl
+  use CGI::WeT ':standard';
+
+  print header('text/html');
+  print start_html(-title => 'PlainText2.CGI');
+  print "Jabberwock\n\n";
+  print "'Twas brillig, and the slithy toves\n";
+  print "Did gyre and gimbol in the wave.\n";
+  print "All mimsy were the borogroves,\n";
+  print "And the mome raths outgrabe....\n";
+  print end_html();
+
+  CGI::WeT->show_page;
 
 =head1 SEE ALSO
 
@@ -114,92 +231,3 @@ jsmith@jamesmith.com
 
 =cut
 
-sub self_or_default {
-    return @_ if defined($_[0]) && (!ref($_[0])) &&($_[0] eq __PACKAGE__);
-    unless (defined($_[0]) && 
-            (ref($_[0]) eq __PACKAGE__ || UNIVERSAL::isa($_[0],__PACKAGE__)) # slightly optimized for common case
-            ) {
-        my $thingy;
-        if(ref(tied *STDOUT) ne __PACKAGE__) {
-            my $stdout = tied *STDOUT;
-            $thingy = tie *STDOUT, __PACKAGE__;
-            $thingy->{'STDOUT'} = $stdout;
-        } else {
-            $thingy = tied *STDOUT;
-        }
-        unshift(@_,$thingy);
-    }
-    return @_;
-}
-
-sub rearrange {
-    return CGI::rearrange(@_);
-}
-
-sub header {
-    return '';
-}
-
-sub start_html {
-    my($self,@p) = &self_or_default(@_);
-    my($title,$author,$base,$xbase,$script,$noscript,$target,$meta,$head,$style,
-$dtd,@other) = 
-        $self->rearrange([qw(TITLE AUTHOR BASE XBASE SCRIPT NOSCRIPT TARGET META HEAD STYLE DTD)],@p);
-
-    # strangely enough, the title needs to be escaped as HTML
-    # while the author needs to be escaped as a URL
-    
-    $title = $self->escapeHTML($title || 'Untitled Document');
-    $author = $self->escape($author);
-    ($self->{'engine'})->headers_push('Title' => $title, 'Author' => $author);
-
-    if ($meta && ref($meta) && (ref($meta) eq 'HASH')) {
-        foreach (keys %$meta) { $self->{'engine'}->headers_push($_ => 
-                                                                $meta->{$_}); }
-    }
-
-    $self->{'engine'}->{'doing_headers'} = 0;
-
-    return '';
-}
-
-sub new {
-    my $this = shift;
-    my $thingy = { };
-
-    my $class = ref($this) || $this;
-
-    $thingy = CGI::new($class, '');
-    $thingy->{'engine'} = CGI::WeT::Engine::_new 'CGI::WeT::Engine', @_;
-    return $thingy;
-}
-
-sub TIEHANDLE { 
-    my $self = new CGI::WeT @_;
-    ($self->{'engine'})->{'doing_headers'} = 1;
-    return $self;
-}
-
-sub DESTROY {
-    #CGI::WeT::Engine::DESTROY(@_);
-#    my $thingy = shift;
-#    CGI::WeT::Engine::DESTROY($thingy->{'engine'});
-}
-
-sub PRINT {
-    my $self = shift;
-  
-    ($self->{'engine'})->print(@_);
-}
-
-sub end_html {
-    if(tied *STDOUT) {
-        my $thingy = tied *STDOUT;
-        if(ref $thingy eq __PACKAGE__) {
-            untie *STDOUT;
-            tie *STDOUT, ref($thingy->{'STDOUT'}), $thingy->{'STDOUT'} 
-                if $thingy->{'STDOUT'};
-        }
-    }
-    return '';
-}

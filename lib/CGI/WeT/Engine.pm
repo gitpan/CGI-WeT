@@ -1,5 +1,5 @@
 #
-# $Id: Engine.pm,v 1.43 1999/08/04 02:30:59 jsmith Exp $
+# $Id: Engine.pm,v 1.44 1999/11/19 05:41:18 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -19,15 +19,15 @@ package CGI::WeT::Engine;
 
 use strict;
 use Carp;
-use vars qw($VERSION @ISA);
+use vars qw(@ISA);
 use integer;
 #use Apache::Constants;
 use IO::File ();
-use CGI ':cgi-lib';
+use CGI::WeT ':cgi-lib :standard';
 
-@ISA = (qw(CGI));
+@ISA = (qw/CGI/);
 
-( $VERSION ) = '$Revision: 1.43 $ ' =~ /\$Revision:\s+([^\s]+)/;
+#( $VERSION ) = '$Revision: 1.44 $ ' =~ /\$Revision:\s+([^\s]+)/;
 
 =pod
 
@@ -254,7 +254,7 @@ sub _new {
     if(defined &Apache::filter_input) {
       no strict 'subs';
       $self->{'FILTERED'} = $Apache::Filter::VERSION || 1;
-      $self->{'STDOUT'} = \*STDOUT;
+      $self->{'STDOUT'} = tied *STDOUT;
     } else {
       $self->{'FILTERED'} = 0;
       $self->{'STDOUT'} = $r;
@@ -275,43 +275,46 @@ sub new {
   
   if($self->{'MOD_PERL'}) {
     $r = Apache->request;
-    
-    if   ($r->method eq 'GET' ) { $in = $r->args;                      }
-    elsif($r->method eq 'POST') { $r->read($in, $ENV{CONTENT_LENGTH}); }
-    else                        { $in = '';                            }
-  } else {
-    if($ENV{REQUEST_METHOD} eq 'GET')     
-      { $in = $ENV{QUERY_STRING}; }
-    elsif($ENV{REQUEST_METHOD} eq 'POST') 
-      { read(STDIN, $in, $ENV{CONTENT_LENGTH}); }
-    else 
-      { $in = ''; }
-  }
+  }    
+#    if   ($r->method eq 'GET' ) { $in = $r->args;                      }
+#    elsif($r->method eq 'POST') { $r->read($in, $ENV{CONTENT_LENGTH}); }
+#    else                        { $in = '';                            }
+#  } else {
+#    if($ENV{REQUEST_METHOD} eq 'GET')     
+#      { $in = $ENV{QUERY_STRING}; }
+#    elsif($ENV{REQUEST_METHOD} eq 'POST') 
+#      { read(STDIN, $in, $ENV{CONTENT_LENGTH}); }
+#    else 
+#      { $in = ''; }
+#  }
 
-  foreach $i (split(/[&;]/,$in)) {
-    $i =~ s/\+/ /g;
-    
-    ($key, $val) = split(/=/,$i,2);
-    #
-    # idiom for multiple entries is taken from Apachi::ASP
-    #
-    
-    $key =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
-    $val =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
-    $val =~ s/\r+//g;
-    if(defined $in{$key}) {
-      my $collect = $in{$key};
-      if(ref $collect) {
-	push(@{$collect}, $val);
-      } else {
-	$in{$key} = [$collect, $val];
-      }
-    } else {
-      $in{$key} = $val;
-    }
-  }
+#  foreach $i (split(/[&;]/,$in)) {
+#    $i =~ s/\+/ /g;
+#    
+#    ($key, $val) = split(/=/,$i,2);
+#    #
+#    # idiom for multiple entries is taken from Apachi::ASP
+#    #
+#    
+#    $key =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
+#    $val =~ s/%([A-Fa-f0-9]{2})/pack("c",hex($1))/ge;
+#    $val =~ s/\r+//g;
+#    if(defined $in{$key}) {
+#      my $collect = $in{$key};
+#      if(ref $collect) {
+#	push(@{$collect}, $val);
+#      } else {
+# 	$in{$key} = [$collect, $val];
+#      }
+#    } else {
+#      $in{$key} = $val;
+#    }
+#  }
+#
+#  $self->arguments_push(\%in);
 
-  $self->arguments_push(\%in);
+  return $self;
+}
 
 =pod
 
@@ -352,9 +355,6 @@ to be defined:
 # ' for Emacs
 # ` for Emacs
 
-  return $self;
-}
-
 sub DESTROY {
   my $engine = shift;
   my $r;
@@ -369,13 +369,13 @@ sub DESTROY {
     $r = Apache->request;
     my $fh = $engine->{'STDOUT'};
     
-    $r->content_type('text/html');
+#    $r->content_type('text/html');
     
-    $r->send_http_header unless $engine->{'FILTERED'};
+#    $r->cgi_headers_out unless $engine->{'FILTERED'};
     
     $fh->print($engine->render_page);
   } else {
-    print "Content-type: text/html\n\n";
+#    print "Content-type: text/html\n\n";
     print $engine->render_page;
   }
 }
@@ -510,7 +510,7 @@ sub argument {
   my $self = shift;
   my $arg = shift;
   my ($i, $n);
-  
+
   if(defined $self->{'ARGUMENTS'}) {
     $i = scalar(@{ $self->{'ARGUMENTS'} });
     while($i) {
@@ -532,7 +532,16 @@ sub argument {
       }
     }
   }
+  #print STDERR "Couldn't find $arg\n";
+  #print STDERR "Param -> ", param('-name' => $arg), "\n";
+  return $self->{QUERY}->param('-name' => $arg) if defined $self->{QUERY};
   return undef;
+}
+
+sub set_query_object {
+  my $self = shift;
+
+  $self->{QUERY} = shift;
 }
 
 =pod
@@ -643,6 +652,7 @@ sub PRINT {
     my $self = shift;
 
     $self->print(@_);
+    print STDERR "Printing from CGI::WeT::Engine\n";
 }
 
 =pod
@@ -1035,6 +1045,8 @@ sub handler {
   }
   
   _handler($fh, $engine);
+
+  $r->content_type('text/html');
   
   return Apache::Constants::OK unless $r->is_initial_req;
   return Apache::Constants::DONE;

@@ -1,3 +1,10 @@
+Release 0.71
+     Removed CGI::WeT::User from distribution as non-germane.
+     True sub-class of CGI, so can handle both procedural and
+       object-oriented interfaces.
+     Added mod-perl handler to replace scripts/chooser.cgi.
+     chooser.cgi is not Y2K complient - CGI::WeT::Chooser is.
+
 Release 0.70
      Changed behavior of engine->filename
      Added ...::Modules::Documentation
