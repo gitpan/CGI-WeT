@@ -1,0 +1,7 @@
+Release 0.6 
+     Initial CGI::WeT release based on WeT Perls 0.5
+
+Release 0.6.1 
+     Fixed bugs in the navigation code (could be more...)
+     Do a little checking for tainted URLs when converting them to filenames
+     Including sample scripts.

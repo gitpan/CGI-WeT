@@ -1,5 +1,5 @@
 #
-# $Id: Loader-Wet.pm,v 1.1 1999/02/28 22:06:05 jsmith Exp $
+# $Id: Loader-Wet.pm,v 1.2 1999/03/06 18:59:26 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -28,7 +28,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6';
+$VERSION = '0.6.1';
 
 =pod
 

@@ -1,5 +1,5 @@
 #
-# $Id: Basic.pm,v 1.2 1999/03/03 04:27:41 jsmith Exp $
+# $Id: Basic.pm,v 1.3 1999/03/06 18:59:05 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -28,7 +28,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6';
+$VERSION = '0.6.1';
 
 =pod
 
@@ -517,7 +517,8 @@ sub CGI::WeT::Modules::NAVIGATION {
 		    $sitemap->{$_}->{'location'};
 		$loc =~ s,/$,,;
 		$loc =~ s,\.([^/]*)$,,;
-		$loc = $engine->url($loc, $engine->argument('suffix'));
+		$loc = $engine->url($picdir, $loc, 
+				    $engine->argument('suffix'));
 		push(@output, "$line<img border=0 src=\"$loc\" alt=\"$_\"></a>");
 	    }
 	}
@@ -525,7 +526,7 @@ sub CGI::WeT::Modules::NAVIGATION {
     } else {
 	my @navcomps = split(/\|/, $engine->{'THEME'}->NAVPATH);
 	my $sitemap;
-	my $nextlevel;
+	my $nextlevel = shift @navcomps;
 	my $up;
 
 	if($engine->argument('level') eq 'current') {
@@ -567,23 +568,28 @@ sub CGI::WeT::Modules::NAVIGATION {
 	    $nextlevel = shift @navcomps;
 	    $sitemap = $sitemap->submap($nextlevel);
 	    $nextlevel = shift @navcomps;
-	}
+	} else {
+	    $sitemap = $engine->{'THEME'}->SITEMAP;
+	}    
+	
 	if($sitemap) {
-	    foreach ($sitemap->KEYS) {
+	    my $key;
+	    foreach $key ($sitemap->KEYS) {
 		my $link;
 		if($engine->argument('type') eq 'text') {
-		    $link = $_;
+		    $link = $key;
 		} else {
-		    my $loc = $sitemap->{$_}->{'button'} ||
-			$sitemap->{$_}->{'location'};
+		    my $loc = $sitemap->{$key}->{'button'} ||
+			$sitemap->{$key}->{'location'};
 		    $loc =~ s,/$,,;
 		    $loc =~ s,\.([^/]*)$,,;
-		    $loc = $engine->url($loc, $engine->argument('suffix'));
-		    $link = "<img border=0 src=\"$loc\" alt=\"$_\">";
+		    $loc = $engine->url($picdir, $loc, 
+					$engine->argument('suffix'));
+		    $link = "<img border=0 src=\"$loc\" alt=\"$key\">";
 		}
-		if($nextlevel ne $_ && !@navcomps) {
+		if($nextlevel ne $key || !@navcomps) {
 		    $link = " $join $bullet<a href=\""
-			. $engine->url($sitemap->{$_}->{'location'}) .
+			. $engine->url($sitemap->{$key}->{'location'}) .
 			    "\">$link</a>";
 		} else {
 		    $link = " $join $bullet$link";
@@ -591,9 +597,10 @@ sub CGI::WeT::Modules::NAVIGATION {
 		push(@output, $link);
 		
 		$join = $jjoin;
-		if($nextlevel eq $_) {
+		if($nextlevel eq $key) {
 		    push(@output,
-			 &doNavigation( $sitemap->submap, $engine, $bullet,
+			 &doNavigation( $sitemap->submap($key), $engine, 
+					$bullet,
 					$engine->argument('indent'),
 					$join, $jjoin, @navcomps) );
 		}
@@ -607,34 +614,36 @@ sub CGI::WeT::Modules::NAVIGATION {
 sub doNavigation {
     my($sitemap, $engine, $bullet, $indent, $join, $jjoin, @navcomps) = @_;
     my(@output);
+    my $key;
 
     my $nextlevel = shift @navcomps;
     return '' unless $sitemap;
-    foreach ($sitemap->KEYS) {
+    foreach $key ($sitemap->KEYS) {
 	my $link;
 	if($engine->argument('type') eq 'text') {
-	    $link = $_;
+	    $link = $key;
 	} else {
-	    my $loc = $sitemap->{$_}->{'button'} ||
-		$sitemap->{$_}->{'location'};
+	    my $loc = $sitemap->{$key}->{'button'} ||
+		$sitemap->{$key}->{'location'};
 	    $loc =~ s,/$,,;
 	    $loc =~ s,\.([^/]*)$,,;
-	    $loc = $engine->url($loc, $engine->argument('suffix'));
-	    $link = "<img border=0 src=\"$loc\" alt=\"$_\">";
+	    $loc = $engine->url('@@GRAPHICS@@/', $engine->argument('type'),
+				'/', $loc, $engine->argument('suffix'));
+	    $link = "<img border=0 src=\"$loc\" alt=\"$key\">";
 	}
-	if($nextlevel ne $_ && !@navcomps) {
-	    $link = " $join $bullet<a href=\""
-		. $engine->url($sitemap->{$_}->{'location'}) .
+	if($nextlevel ne $key || !@navcomps) {
+	    $link = " $join$indent$bullet<a href=\""
+		. $engine->url($sitemap->{$key}->{'location'}) .
 		    "\">$link</a>";
 	} else {
-	    $link = " $join $bullet$link";
+	    $link = " $join$indent$bullet$link";
 	}
 	push(@output, $link);
 	
 	$join = $jjoin;
-	if($nextlevel eq $_) {
+	if($nextlevel eq $key) {
 	    push(@output,
-		 &doNavigation( $sitemap->submap, $engine, $bullet,
+		 &doNavigation( $sitemap->submap($key), $engine, $bullet,
 				$indent . $engine->argument('indent'), 
 				$join, $jjoin, @navcomps) );
 	}
@@ -676,7 +685,7 @@ sub CGI::WeT::Modules::NAVPATH {
 			 '/', $engine->argument('join')
 			 );
 	foreach ('width', 'height', 'align') {
-	    $join = " $_=" . $engine->argumment("join_$_")
+	    $join .= " $_=" . $engine->argumment("join_$_")
 		if $engine->argument("join_$_");
 	}
 	$join .= ">";
@@ -685,7 +694,7 @@ sub CGI::WeT::Modules::NAVPATH {
 			 '/', $engine->argument('ellipses')
 			 );
 	foreach ('width', 'height', 'align') {
-	    $ellipses = " $_=" . $engine->argumment("ellipses_$_")
+	    $ellipses .= " $_=" . $engine->argumment("ellipses_$_")
 		if $engine->argument("ellipses_$_");
 	}
 	$ellipses .= ">";
