@@ -1,0 +1,66 @@
+=pod
+
+=head1 NAME
+
+CGI::WeT - Suite of modules to themeify a website
+
+=head1 SYNOPSIS
+
+    use CGI::WeT::Engine ();
+    use CGI::WeT::Theme ();
+    use CGI::WeT::Theme::Loader::WeT ();
+    use CGI::WeT::Modules::Basic ();
+
+Additional packages may be installed and used.  Please check with CPAN for the
+latest collections.
+
+=head1 DESCRIPTION
+
+The collection of CGI::WeT::* modules allow a site to be built from three major
+components: (1) static themed html files, (2) theme definitions, (3) CGI
+scripts.
+
+=head1 Themed HTML
+
+Static files are built with no navigation or other theme-dependent information.
+The file consists of a set of header lines followed by the body of the file
+separated by a blank line.  For example
+
+    Title: This is an example file
+
+    <p>This file is an example of themed HTML</p>
+
+This will produce a page with `This is an example file' as part of the title
+in the head and the rest of the file as the body placed on the page according
+to the theme in force.
+
+=head1 Theme Definitions
+
+This part of the package depends on which theme loader is being used.  A theme
+definition provides the engine with the information it needs to produce a well
+formed page.  See the appropriate CGI::WeT::Theme::Loader::*(3) page.
+
+=head1 CGI Scripts
+
+CGI scripts can be used to extend the functionality of the site and yet maintain
+a common look and feel according the themes.  See CGI::WeT::Engine(3) for
+more details on interfacing with the rendering engine.
+
+=head1 SEE ALSO
+
+perl(1),
+CGI::WeT::*(3),
+
+CGI::WeT notes at C<http://people.physics.tamu.edu/jsmith/wet-perls/>
+
+=head1 SUPPORT
+
+Please send any questions or comments about CGI::WeT to me at
+j-smith@physics.tamu.edu.
+
+=head1 AUTHORS
+
+ Written by James G. Smith.
+ Copyright (C) 1999.  Released under the GNU General Public License v. 2.
+
+=cut
