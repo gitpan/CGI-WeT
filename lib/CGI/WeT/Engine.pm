@@ -1,5 +1,5 @@
 #
-# $Id: Engine.pm,v 1.7 1999/03/06 18:58:49 jsmith Exp $
+# $Id: Engine.pm,v 1.8 1999/03/06 20:07:00 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -29,7 +29,7 @@ use Carp;
 use vars qw($VERSION);
 use integer;
 
-$VERSION = '0.6.1';
+$VERSION = '0.6.2';
 
 =pod
 

@@ -1,5 +1,5 @@
 #
-# $Id: Theme.pm,v 1.2 1999/03/06 18:59:26 jsmith Exp $
+# $Id: Theme.pm,v 1.3 1999/03/06 20:07:31 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -28,7 +28,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6.1';
+$VERSION = '0.6.2';
 
 =pod
 
@@ -122,7 +122,7 @@ package CGI::WeT::Theme::Aux::PageType;
 
 use vars qw($VERSION $AUTOLOAD);
 
-$VERSION = '0.6.1';
+$VERSION = '0.6.2';
 
 sub new {
     my $this = shift;
@@ -150,7 +150,7 @@ package CGI::WeT::Theme::Aux::ThemeDef;
 
 use vars qw($VERSION);
 
-$VERSION = '0.6.1';
+$VERSION = '0.6.2';
 
 sub new {
     my $this = shift;
@@ -182,7 +182,7 @@ sub page_type {
 sub SITEMAP {
     my $self = shift;
 
-    return new CGI::WeT::Theme::Aux::SiteMap $self->{'SITEMAP'};
+    return $self->{'SITEMAP'};
 }
 
 sub NAVPATH {
@@ -195,7 +195,7 @@ package CGI::WeT::Theme::Aux::SiteMap;
 
 use vars qw($VERSION);
 
-$VERSION = '0.6.1';
+$VERSION = '0.6.2';
 
 sub new {
     my $this = shift;

@@ -1,5 +1,5 @@
 #
-# $Id: Basic.pm,v 1.3 1999/03/06 18:59:05 jsmith Exp $
+# $Id: Basic.pm,v 1.4 1999/03/06 20:07:13 jsmith Exp $
 #
 # Author: James G. Smith
 #
@@ -28,7 +28,7 @@ use strict;
 use Carp;
 use vars qw($VERSION);
 
-$VERSION = '0.6.1';
+$VERSION = '0.6.2';
 
 =pod
 

@@ -1,3 +1,7 @@
+CGI::WeT is a package to help build a website with the ability to offer
+looks for the same content.  CGI::WeT prefers Apache with mod_perl but can
+be made to work without mod_perl with a little more effort.
+
 To install CGI::WeT run the following commands:
 
     perl Makefile.PL
